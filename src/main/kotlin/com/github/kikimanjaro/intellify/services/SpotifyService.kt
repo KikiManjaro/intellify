@@ -1,6 +1,10 @@
 package com.github.kikimanjaro.intellify.services
 
+import com.intellij.credentialStore.CredentialAttributes
+import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
+import com.intellij.ide.passwordSafe.PasswordSafe
+import com.intellij.remoteServer.util.CloudConfigurationUtil.createCredentialAttributes
 import se.michaelthelin.spotify.SpotifyApi
 import se.michaelthelin.spotify.SpotifyHttpManager
 import se.michaelthelin.spotify.enums.AuthorizationScope
@@ -25,6 +29,8 @@ object SpotifyService {
         .setClientId(clientId)
         .setClientSecret(clientSecret)
         .setRedirectUri(redirectUri)
+        .setAccessToken(retrieveAccessToken())
+        .setRefreshToken(retrieveRefreshToken())
         .build()
 
     private val authorizationCodeUriRqst = AuthorizationCodeUriRequest.Builder().client_id(clientId)
@@ -36,14 +42,12 @@ object SpotifyService {
             AuthorizationScope.USER_MODIFY_PLAYBACK_STATE,
             AuthorizationScope.USER_TOP_READ
         ).build()
-    private var code = ""
 
+    var code = retrieveCode()
     var title = ""
     var isPlaying = false
 
-    init {}
-
-    fun authorizationCodeRefresh() {
+    fun refreshAccessTokenWithRefreshToken() {
         try {
             if (spotifyApi.refreshToken != null && spotifyApi.refreshToken.isNotEmpty()) {
                 val authorizationCodeRefreshRequest = spotifyApi.authorizationCodeRefresh().build()
@@ -56,44 +60,59 @@ object SpotifyService {
 
                 // Set access token for further "spotifyApi" object usage
                 spotifyApi.accessToken = authorizationCodeCredentials.accessToken
-//                println("Expires in: " + authorizationCodeCredentials.expiresIn)
+                saveAccessToken(authorizationCodeCredentials.accessToken)
+                println("Expires in: " + authorizationCodeCredentials.expiresIn)
+            } else if (spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()){
+                getTokensFromCode()
+            } else {
+                getCodeFromBrowser()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
+            getCodeFromBrowser()
         } catch (e: CancellationException) {
             println("Async operation cancelled.")
+            getCodeFromBrowser()
         } catch (e: Exception) {
             println("Error: " + e.message)
+            getCodeFromBrowser()
         }
     }
 
-    fun authorizationCode_Async() {
+    fun getTokensFromCode() {
         try {
             if (code.isNotEmpty()) {
                 val authorizationCodeCredentialsFuture = spotifyApi.authorizationCode(code).build().executeAsync()
                 val authorizationCodeCredentials = authorizationCodeCredentialsFuture.join()
 
                 spotifyApi.accessToken = authorizationCodeCredentials.accessToken
+                saveAccessToken(authorizationCodeCredentials.accessToken)
                 spotifyApi.refreshToken = authorizationCodeCredentials.refreshToken
+                saveRefreshToken(authorizationCodeCredentials.refreshToken)
 //                println("Expires in: " + authorizationCodeCredentials.expiresIn)
+            } else {
+                getCodeFromBrowser()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
+            refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
             println("Async operation cancelled.")
+            refreshAccessTokenWithRefreshToken()
         } catch (e: Exception) {
             println("Error: " + e.message)
+            refreshAccessTokenWithRefreshToken()
         }
     }
 
-    fun authorizationCodeUri_Async() {
+    fun getCodeFromBrowser() {
         try {
-            val uriFuture = authorizationCodeUriRqst.executeAsync()
+                val uriFuture = authorizationCodeUriRqst.executeAsync()
 
-            val uri = uriFuture.join()
+                val uri = uriFuture.join()
 //            println("URI: $uri")
-            openServer()
-            BrowserUtil.browse(uri)
+                openServer()
+                BrowserUtil.browse(uri)
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
@@ -115,6 +134,8 @@ object SpotifyService {
                     title = track.name
                     title += " - " + track.artists[0].name
                 }
+            } else {
+                getTokensFromCode()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -185,8 +206,9 @@ object SpotifyService {
         val server = ServerSocket(30498)
 //        println("Server is running on port ${server.localPort}")
 
+        var stop = false;
         thread {
-            while (true) {
+            while (!stop) {
                 try {
                     val socket = server.accept()
                     println("Client connected")
@@ -196,14 +218,55 @@ object SpotifyService {
                     val reader = BufferedReader(InputStreamReader(input))
                     val writer = BufferedWriter(OutputStreamWriter(output))
                     val line = reader.readLine()
-                    writer.write("HTTP/1.1 200 OK\r\n")
+                    writer.write("HTTP/1.1 200 OK\r\n") //TODO: write that everything is ok
                     code = line.split("=")[1].split(" ")[0]
-                    authorizationCode_Async()
-                    socket.close()
+                    if (code.isNotEmpty()) {
+                        saveCode(code)
+                        getTokensFromCode()
+                        stop = true
+                        socket.close()
+                    }
                 } catch (e: Exception) {
                     println("Socket error: " + e.message)
+                    stop = true
                 }
             }
         }
+    }
+
+    private fun saveCode(newCode: String) {
+        val credentialAttributes: CredentialAttributes? =
+            createCredentialAttributes("Intellify-code", "user") // see previous sample
+        val credentials = Credentials("Intellify-code", newCode)
+        PasswordSafe.instance.set(credentialAttributes!!, credentials)
+    }
+
+    private fun retrieveCode(): String {
+        val credentialAttributes = createCredentialAttributes("Intellify-code", "user")
+        return PasswordSafe.instance.getPassword(credentialAttributes!!) ?: ""
+    }
+
+    private fun saveAccessToken(token: String) {
+        val credentialAttributes: CredentialAttributes? =
+            createCredentialAttributes("Intellify-acces", "user") // see previous sample
+        val credentials = Credentials("Intellify-acces", token)
+        PasswordSafe.instance.set(credentialAttributes!!, credentials)
+    }
+
+    private fun retrieveAccessToken(): String? {
+        val credentialAttributes = createCredentialAttributes("Intellify-acces", "user")
+        return PasswordSafe.instance.getPassword(credentialAttributes!!)
+    }
+
+    private fun saveRefreshToken(token: String) {
+        val credentialAttributes: CredentialAttributes? =
+            createCredentialAttributes("Intellify-refresh", "user") // see previous sample
+        val credentials = Credentials("Intellify-refresh", token)
+        PasswordSafe.instance.set(credentialAttributes!!, credentials)
+    }
+
+    private fun retrieveRefreshToken(): String? {
+        val credentialAttributes = createCredentialAttributes("Intellify-refresh", "user")
+        return PasswordSafe.instance.getPassword(credentialAttributes!!)
     }
 }

@@ -9,6 +9,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <applicationService serviceImplementation="com.github.kikimanjaro.intellify.services.MyApplicationService"/>
         <projectService serviceImplementation="com.github.kikimanjaro.intellify.services.MyProjectService"/>
+        <statusBarWidgetFactory implementation="com.github.kikimanjaro.intellify.services.MyStatusBarWidgetFactory"/>
     </extensions>
 
     <applicationListeners>
@@ -16,25 +17,24 @@
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </applicationListeners>
 
-    <project-components>
-        <component>
-            <interface-class>com.github.kikimanjaro.intellify.SpotifyPluginStatusBarComponent</interface-class>
-            <implementation-class>com.github.kikimanjaro.intellify.SpotifyPluginStatusBarComponent</implementation-class>
-        </component>
-    </project-components>
     <actions>
         <group id="SpotifyPlugin.SpotifyGroup" icon="/icons/spotify.png">
             <add-to-group group-id="NavBarToolBar" anchor="before" relative-to-action="ToolbarRunGroup"/>
         </group>
         <!--  Add your actions here  -->
-        <action id="SpotifyPlugin.playpause" class="com.github.kikimanjaro.intellify.PlayPause" text="Play/Pause" description="Play/pause music" icon="/icons/play.png">
+        <action id="SpotifyPlugin.playpause" class="com.github.kikimanjaro.intellify.PlayPause" text="Play/Pause (Intellify)"
+                description="Play/pause music" icon="/icons/play.png">
             <add-to-group group-id="SpotifyPlugin.SpotifyGroup"/>
         </action>
-        <action id="SpotifyPlugin.prev" class="com.github.kikimanjaro.intellify.Prev" text="Previous" description="Previous track" icon="/icons/prev.png">
-            <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="before" relative-to-action="SpotifyPlugin.playpause"/>
+        <action id="SpotifyPlugin.prev" class="com.github.kikimanjaro.intellify.Prev" text="Previous (Intellify)"
+                description="Previous track" icon="/icons/prev.png">
+            <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="before"
+                          relative-to-action="SpotifyPlugin.playpause"/>
         </action>
-        <action id="SpotifyPlugin.next" class="com.github.kikimanjaro.intellify.Next" text="Next" description="Next track" icon="/icons/next.png">
-            <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="after" relative-to-action="SpotifyPlugin.playpause"/>
+        <action id="SpotifyPlugin.next" class="com.github.kikimanjaro.intellify.Next" text="Next (Intellify)"
+                description="Next track" icon="/icons/next.png">
+            <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="after"
+                          relative-to-action="SpotifyPlugin.playpause"/>
         </action>
     </actions>
 </idea-plugin>
