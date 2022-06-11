@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.net.URI
 
 fun properties(key: String) = project.findProperty(key).toString()
 
@@ -7,7 +8,7 @@ plugins {
     // Java support
     id("java")
     // Kotlin support
-    id("org.jetbrains.kotlin.jvm") version "1.6.10"
+    id("org.jetbrains.kotlin.jvm") version "1.7.0"
     // Gradle IntelliJ Plugin
     id("org.jetbrains.intellij") version "1.4.0"
     // Gradle Changelog Plugin
@@ -22,7 +23,20 @@ version = properties("pluginVersion")
 // Configure project's dependencies
 repositories {
     mavenCentral()
+    maven { url = URI("https://jitpack.io") }
 }
+
+dependencies {
+    implementation("se.michaelthelin.spotify:spotify-web-api-java:7.1.0"){
+        exclude(group="org.slf4j", module="slf4j-api")
+    }
+}
+
+//configurations {
+//    all {
+//        exclude(group = "org.slf4j.LoggerFactory", module = "com.intellij.ide.plugins.cl.PluginClassLoader")
+//    }
+//}
 
 // Configure Gradle IntelliJ Plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
 intellij {

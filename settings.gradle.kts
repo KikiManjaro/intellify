@@ -1,1 +1,1 @@
-rootProject.name = "intellij-spotify"
+rootProject.name = "intellify"

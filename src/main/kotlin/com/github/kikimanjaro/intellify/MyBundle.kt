@@ -1,4 +1,4 @@
-package com.github.kikimanjaro.intellijspotify
+package com.github.kikimanjaro.intellify
 
 import com.intellij.DynamicBundle
 import org.jetbrains.annotations.NonNls

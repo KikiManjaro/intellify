@@ -1,6 +1,6 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# intellij-spotify Changelog
+# intellify Changelog
 
 ## [Unreleased]
 ### Added

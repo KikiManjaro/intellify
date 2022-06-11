@@ -1,4 +1,4 @@
-package com.github.kikimanjaro.intellijspotify
+package com.github.kikimanjaro.intellify
 
 import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.psi.xml.XmlFile

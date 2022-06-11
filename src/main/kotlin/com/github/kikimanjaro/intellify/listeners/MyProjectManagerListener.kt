@@ -1,9 +1,9 @@
-package com.github.kikimanjaro.intellijspotify.listeners
+package com.github.kikimanjaro.intellify.listeners
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManagerListener
-import com.github.kikimanjaro.intellijspotify.services.MyProjectService
+import com.github.kikimanjaro.intellify.services.MyProjectService
 
 internal class MyProjectManagerListener : ProjectManagerListener {
 
