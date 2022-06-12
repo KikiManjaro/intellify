@@ -1,6 +1,8 @@
-package com.github.kikimanjaro.intellify
+package com.github.kikimanjaro.intellify.services
 
-import com.github.kikimanjaro.intellify.services.SpotifyService
+import com.github.kikimanjaro.intellify.actions.Next
+import com.github.kikimanjaro.intellify.actions.PlayPause
+import com.github.kikimanjaro.intellify.actions.Prev
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.wm.StatusBar
@@ -21,7 +23,7 @@ class SpotifyStatusUpdater(
     private var nextAction: Next? = ActionManager.getInstance().getAction("SpotifyPlugin.next") as Next
 
     override fun run() {
-        while (!stop) {
+        while (!stop) { //TODO: change with timer
             SpotifyService.getInformationAboutUsersCurrentPlayingTrack()
             updateUI()
             try {

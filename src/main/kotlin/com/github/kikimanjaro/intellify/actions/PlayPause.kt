@@ -1,10 +1,10 @@
-package com.github.kikimanjaro.intellify
+package com.github.kikimanjaro.intellify.actions
 
 import com.github.kikimanjaro.intellify.services.SpotifyService
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.util.IconLoader
 
-class PlayPause : AbstractSpotifyCommandAction() {
+class PlayPause : AbstractSpotifyAction() {
     var playIcon = IconLoader.getIcon("/icons/play.svg", this::class.java)
     var pauseIcon = IconLoader.getIcon("/icons/pause.svg", this::class.java)
 

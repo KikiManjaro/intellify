@@ -22,16 +22,16 @@
             <add-to-group group-id="NavBarToolBar" anchor="before" relative-to-action="ToolbarRunGroup"/>
         </group>
         <!--  Add your actions here  -->
-        <action id="SpotifyPlugin.playpause" class="com.github.kikimanjaro.intellify.PlayPause" text="Play/Pause (Intellify)"
+        <action id="SpotifyPlugin.playpause" class="com.github.kikimanjaro.intellify.actions.PlayPause" text="Play/Pause (Intellify)"
                 description="Play/pause music" icon="/icons/play.svg">
             <add-to-group group-id="SpotifyPlugin.SpotifyGroup"/>
         </action>
-        <action id="SpotifyPlugin.prev" class="com.github.kikimanjaro.intellify.Prev" text="Previous (Intellify)"
+        <action id="SpotifyPlugin.prev" class="com.github.kikimanjaro.intellify.actions.Prev" text="Previous (Intellify)"
                 description="Previous track" icon="/icons/prev.svg">
             <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="before"
                           relative-to-action="SpotifyPlugin.playpause"/>
         </action>
-        <action id="SpotifyPlugin.next" class="com.github.kikimanjaro.intellify.Next" text="Next (Intellify)"
+        <action id="SpotifyPlugin.next" class="com.github.kikimanjaro.intellify.actions.Next" text="Next (Intellify)"
                 description="Next track" icon="/icons/next.svg">
             <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="after"
                           relative-to-action="SpotifyPlugin.playpause"/>
