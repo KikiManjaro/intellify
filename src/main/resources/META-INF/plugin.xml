@@ -2,9 +2,22 @@
 <idea-plugin>
     <id>com.github.kikimanjaro.intellify</id>
     <name>Intellify</name>
-    <vendor>kikimanjaro</vendor>
+    <version>0.0.1</version>
+    <idea-version since-build="193"/>
+    <vendor email="kylian.meulin@gmail.com">KikiManjaro</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+
+    <description><![CDATA[
+        This is the Intellify plugin for JetBrains IDE's. This is basically a minimal Spotify integration,
+        displaying the current playing track in Status Bottom Bar and Prev, Play/Pause, Next buttons in Status Top Bar.
+    ]]></description>
+
+    <change-notes><![CDATA[
+      <em>0.0.1 Beta</em><br>
+    ]]>
+    </change-notes>
+
 
     <extensions defaultExtensionNs="com.intellij">
         <applicationService serviceImplementation="com.github.kikimanjaro.intellify.services.MyApplicationService"/>
@@ -22,11 +35,13 @@
             <add-to-group group-id="NavBarToolBar" anchor="before" relative-to-action="ToolbarRunGroup"/>
         </group>
         <!--  Add your actions here  -->
-        <action id="SpotifyPlugin.playpause" class="com.github.kikimanjaro.intellify.actions.PlayPause" text="Play/Pause (Intellify)"
+        <action id="SpotifyPlugin.playpause" class="com.github.kikimanjaro.intellify.actions.PlayPause"
+                text="Play/Pause (Intellify)"
                 description="Play/pause music" icon="/icons/play.svg">
             <add-to-group group-id="SpotifyPlugin.SpotifyGroup"/>
         </action>
-        <action id="SpotifyPlugin.prev" class="com.github.kikimanjaro.intellify.actions.Prev" text="Previous (Intellify)"
+        <action id="SpotifyPlugin.prev" class="com.github.kikimanjaro.intellify.actions.Prev"
+                text="Previous (Intellify)"
                 description="Previous track" icon="/icons/prev.svg">
             <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="before"
                           relative-to-action="SpotifyPlugin.playpause"/>
