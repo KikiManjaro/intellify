@@ -76,10 +76,8 @@ object SpotifyService {
             getCodeFromBrowser()
         } catch (e: CancellationException) {
             println("Async operation cancelled.")
-            getCodeFromBrowser()
         } catch (e: Exception) {
             println("Error: " + e.message)
-            getCodeFromBrowser()
         }
     }
 
@@ -102,10 +100,8 @@ object SpotifyService {
             refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
             println("Async operation cancelled.")
-            refreshAccessTokenWithRefreshToken()
         } catch (e: Exception) {
             println("Error: " + e.message)
-            refreshAccessTokenWithRefreshToken()
         }
     }
 
@@ -143,6 +139,7 @@ object SpotifyService {
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
+            refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
             println("Async operation cancelled.")
         } catch (e: Exception) {
