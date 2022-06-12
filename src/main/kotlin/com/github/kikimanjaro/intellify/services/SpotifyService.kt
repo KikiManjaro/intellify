@@ -21,10 +21,14 @@ import kotlin.concurrent.thread
 
 
 object SpotifyService {
+    private const val codeServiceName = "Intellify-code"
+    private const val accesServiceName = "Intellify-acces"
+    private const val refreshServiceName = "Intellify-refresh"
     private val clientId = "0128b371f3174a178b8144795ea68f9e"
     private val clientSecret = "815626f75057430fbc3cf702e368b228"
     private val redirectUri =
         SpotifyHttpManager.makeUri("http://localhost:30498/callback") //TODO: add max users here: https://developer.spotify.com/dashboard/applications/0128b371f3174a178b8144795ea68f9e/users
+
     private val spotifyApi = SpotifyApi.Builder()
         .setClientId(clientId)
         .setClientSecret(clientSecret)
@@ -42,9 +46,9 @@ object SpotifyService {
             AuthorizationScope.USER_MODIFY_PLAYBACK_STATE,
             AuthorizationScope.USER_TOP_READ
         ).build()
-
     var code = retrieveCode()
     var title = ""
+
     var isPlaying = false
 
     fun refreshAccessTokenWithRefreshToken() {
@@ -236,37 +240,37 @@ object SpotifyService {
 
     private fun saveCode(newCode: String) {
         val credentialAttributes: CredentialAttributes? =
-            createCredentialAttributes("Intellify-code", "user") // see previous sample
-        val credentials = Credentials("Intellify-code", newCode)
+            createCredentialAttributes(codeServiceName, "user") // see previous sample
+        val credentials = Credentials(codeServiceName, newCode)
         PasswordSafe.instance.set(credentialAttributes!!, credentials)
     }
 
     private fun retrieveCode(): String {
-        val credentialAttributes = createCredentialAttributes("Intellify-code", "user")
+        val credentialAttributes = createCredentialAttributes(codeServiceName, "user")
         return PasswordSafe.instance.getPassword(credentialAttributes!!) ?: ""
     }
 
     private fun saveAccessToken(token: String) {
         val credentialAttributes: CredentialAttributes? =
-            createCredentialAttributes("Intellify-acces", "user") // see previous sample
-        val credentials = Credentials("Intellify-acces", token)
+            createCredentialAttributes(accesServiceName, "user") // see previous sample
+        val credentials = Credentials(accesServiceName, token)
         PasswordSafe.instance.set(credentialAttributes!!, credentials)
     }
 
     private fun retrieveAccessToken(): String? {
-        val credentialAttributes = createCredentialAttributes("Intellify-acces", "user")
+        val credentialAttributes = createCredentialAttributes(accesServiceName, "user")
         return PasswordSafe.instance.getPassword(credentialAttributes!!)
     }
 
     private fun saveRefreshToken(token: String) {
         val credentialAttributes: CredentialAttributes? =
-            createCredentialAttributes("Intellify-refresh", "user") // see previous sample
-        val credentials = Credentials("Intellify-refresh", token)
+            createCredentialAttributes(refreshServiceName, "user") // see previous sample
+        val credentials = Credentials(refreshServiceName, token)
         PasswordSafe.instance.set(credentialAttributes!!, credentials)
     }
 
     private fun retrieveRefreshToken(): String? {
-        val credentialAttributes = createCredentialAttributes("Intellify-refresh", "user")
+        val credentialAttributes = createCredentialAttributes(refreshServiceName, "user")
         return PasswordSafe.instance.getPassword(credentialAttributes!!)
     }
 }

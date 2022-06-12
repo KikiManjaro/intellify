@@ -75,7 +75,7 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
 
                     override fun getIcon(): Icon? {
                         return spotifyStatusUpdater?.currentIcon ?: IconLoader.getIcon(
-                            "/icons/spotify-inactive.png",
+                            "/icons/spotify-inactive.svg",
                             this::class.java
                         )
                     }

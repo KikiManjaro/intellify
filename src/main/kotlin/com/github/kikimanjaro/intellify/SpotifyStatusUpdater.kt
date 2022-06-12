@@ -6,15 +6,12 @@ import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.wm.StatusBar
 import javax.swing.Icon
 
-/**
- * Created by rozsenichb on 11/02/2016.
- */
 class SpotifyStatusUpdater(
     private var statusBar: StatusBar?
 ) : Runnable {
     private var stop = false
-    private val spotifyActiveIcon: Icon = IconLoader.getIcon("/icons/spotify.png", this::class.java)
-    private val spotifyInactiveIcon: Icon = IconLoader.getIcon("/icons/spotify-inactive.png", this::class.java)
+    private val spotifyActiveIcon: Icon = IconLoader.getIcon("/icons/spotify.svg", this::class.java)
+    private val spotifyInactiveIcon: Icon = IconLoader.getIcon("/icons/spotify-inactive.svg", this::class.java)
     val currentIcon: Icon
         get() = if (SpotifyService.title.isNotEmpty()) spotifyActiveIcon else spotifyInactiveIcon
 
