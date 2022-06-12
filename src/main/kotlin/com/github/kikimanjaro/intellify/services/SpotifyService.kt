@@ -222,7 +222,7 @@ object SpotifyService {
                     val reader = BufferedReader(InputStreamReader(input))
                     val writer = BufferedWriter(OutputStreamWriter(output))
                     val line = reader.readLine()
-                    writer.write("HTTP/1.1 200 OK\r\n") //TODO: make this beautiful
+                    writer.write("HTTP/1.1 200 OK\r\n") //TODO: make this beautiful, maybe with an image
                     writer.write(
                         "<!DOCTYPE html>\n" +
                                 "<html lang=\"en\">\n" +
