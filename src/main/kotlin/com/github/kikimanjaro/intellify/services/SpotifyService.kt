@@ -66,7 +66,7 @@ object SpotifyService {
                 spotifyApi.accessToken = authorizationCodeCredentials.accessToken
                 saveAccessToken(authorizationCodeCredentials.accessToken)
                 println("Expires in: " + authorizationCodeCredentials.expiresIn)
-            } else if (spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()){
+            } else if (spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
                 getTokensFromCode()
             } else {
                 getCodeFromBrowser()
@@ -111,12 +111,12 @@ object SpotifyService {
 
     fun getCodeFromBrowser() {
         try {
-                val uriFuture = authorizationCodeUriRqst.executeAsync()
+            val uriFuture = authorizationCodeUriRqst.executeAsync()
 
-                val uri = uriFuture.join()
+            val uri = uriFuture.join()
 //            println("URI: $uri")
-                openServer()
-                BrowserUtil.browse(uri)
+            openServer()
+            BrowserUtil.browse(uri)
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
@@ -222,12 +222,39 @@ object SpotifyService {
                     val reader = BufferedReader(InputStreamReader(input))
                     val writer = BufferedWriter(OutputStreamWriter(output))
                     val line = reader.readLine()
-                    writer.write("HTTP/1.1 200 OK\r\n") //TODO: write that everything is ok
+                    writer.write("HTTP/1.1 200 OK\r\n") //TODO: make this beautiful
+                    writer.write(
+                        "<!DOCTYPE html>\n" +
+                                "<html lang=\"en\">\n" +
+                                "<head>\n" +
+                                "    <meta charset=\"UTF-8\">\n" +
+                                "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+                                "    <title>My html page</title>\n" +
+                                "</head>\n" +
+                                "<body>\n" +
+                                "\n" +
+                                "    <p>\n" +
+                                "        Thank you for using Intellify.\n" +
+                                "    </p>\n" +
+                                "    \n" +
+                                "    <p>\n" +
+                                "         You can close this, it's useless now :p\n" +
+                                "    </p>\n" +
+                                "    \n" +
+                                "    <p>\n" +
+                                "         KikiManjaro\n" +
+                                "    </p>\n" +
+                                "    \n" +
+                                "</body>\n" +
+                                "</html>"
+                    )
+                    writer.flush()
                     code = line.split("=")[1].split(" ")[0]
                     if (code.isNotEmpty()) {
                         saveCode(code)
                         getTokensFromCode()
                         stop = true
+                        Thread.sleep(10000)
                         socket.close()
                     }
                 } catch (e: Exception) {
