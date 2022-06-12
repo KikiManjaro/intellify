@@ -2,6 +2,8 @@
 
 # intellify Changelog
 
+## [Unreleased]
+### Added
+
 ## [0.0.1]
-### Beta
 - Initial beta release
