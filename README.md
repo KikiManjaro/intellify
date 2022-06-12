@@ -9,7 +9,7 @@
 
 <!-- Plugin description -->
 
-The Intellify progress bar for IntelliJ IDEA and other JetBrains IDEs.
+The Intellify plugin for IntelliJ IDEA and other JetBrains IDEs.
 
 This is the [Intellify plugin](https://plugins.jetbrains.com/plugin/PLUGIN_ID/versions)
 for [JetBrains IntelliJ IDEA](https://www.jetbrains.com/idea/). This is basically a minimal Spotify integration,
