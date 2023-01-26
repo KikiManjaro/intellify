@@ -2,6 +2,7 @@ package com.github.kikimanjaro.intellify.services
 
 import com.github.kikimanjaro.intellify.services.Secret.Companion.clientId
 import com.github.kikimanjaro.intellify.services.Secret.Companion.clientSecret
+import com.github.kikimanjaro.intellify.ui.SpotifyPanel
 import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
@@ -23,6 +24,7 @@ import kotlin.concurrent.thread
 
 
 object SpotifyService {
+    var currentPanel: SpotifyPanel? = null
     private const val codeServiceName = "Intellify-code"
     private const val accesServiceName = "Intellify-acces"
     private const val refreshServiceName = "Intellify-refresh"
@@ -47,6 +49,9 @@ object SpotifyService {
         ).build()
     var code = retrieveCode()
     var title = ""
+    var artist = ""
+    var song = ""
+    var imageUrl = ""
 
     var isPlaying = false
 
@@ -130,8 +135,15 @@ object SpotifyService {
                 if (currentlyPlayingContext.item is Track) {
                     isPlaying = currentlyPlayingContext.is_playing
                     val track = currentlyPlayingContext.item as Track
+                    song = track.name
+                    artist = track.artists[0].name
                     title = track.name
                     title += " - " + track.artists[0].name
+                    if (track.album != null && track.album.images.isNotEmpty()) {
+                        imageUrl = track.album.images[0].url
+                    } else {
+                        imageUrl = ""
+                    }
                 }
             } else {
                 getTokensFromCode()

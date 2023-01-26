@@ -2,7 +2,7 @@
 <idea-plugin>
     <id>com.github.kikimanjaro.intellify</id>
     <name>Intellify</name>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
     <idea-version since-build="193"/>
     <vendor email="kylian.meulin@gmail.com">KikiManjaro</vendor>
 
@@ -10,17 +10,15 @@
 
     <description><![CDATA[
         This is the Intellify plugin for JetBrains IDE's. This is basically a minimal Spotify integration,
-        displaying the current playing track in Status Bottom Bar and Prev, Play/Pause, Next buttons in Status Top Bar.
+        displaying the current playing track in Status Bottom Bar and Prev, Play/Pause, Next buttons and Album Cover in a popup.
         <br>
-        <img src="https://user-images.githubusercontent.com/59285425/191522483-a2ddc3e7-775a-4c7a-b5a6-09d4e39d1e48.png" title="Buttons" />
-        <br>
-        <br>
-        <img src="https://user-images.githubusercontent.com/59285425/191522742-f234069e-40dc-4e37-8015-a55044eda01e.png" title="Title" />
+        <img src="https://user-images.githubusercontent.com/59285425/214960689-08ba6172-68f0-4408-8ed1-045e0830be0f.png" title="Popup" />
         <br>
         <br> This product is not directly part of Spotify
     ]]></description>
 
     <change-notes><![CDATA[
+      <em>0.0.4 Add popup to control currently played song</em><br>
       <em>0.0.3 Compatibility fixes</em><br>
       <em>0.0.2 Change Icon</em><br>
       <em>0.0.1 Beta</em><br>
@@ -32,8 +30,8 @@
         <applicationService serviceImplementation="com.github.kikimanjaro.intellify.services.MyApplicationService"/>
         <projectService serviceImplementation="com.github.kikimanjaro.intellify.services.MyProjectService"/>
         <statusBarWidgetFactory implementation="com.github.kikimanjaro.intellify.services.MyStatusBarWidgetFactory"/>
-        <toolWindow id="Intellify" anchor="right"
-                    factoryClass="com.github.kikimanjaro.intellify.services.MyToolWindowFactory"/>
+<!--        <toolWindow id="Intellify" anchor="right"-->
+<!--                    factoryClass="com.github.kikimanjaro.intellify.services.MyToolWindowFactory"/>-->
     </extensions>
 
     <applicationListeners>
@@ -45,22 +43,5 @@
         <group id="SpotifyPlugin.SpotifyGroup" icon="/icons/spotify.svg">
             <add-to-group group-id="NavBarToolBar" anchor="before" relative-to-action="ToolbarRunGroup"/>
         </group>
-        <!--  Add your actions here  -->
-        <action id="SpotifyPlugin.playpause" class="com.github.kikimanjaro.intellify.actions.PlayPause"
-                text="Play/Pause (Intellify)"
-                description="Play/pause music" icon="/icons/play.svg">
-            <add-to-group group-id="SpotifyPlugin.SpotifyGroup"/>
-        </action>
-        <action id="SpotifyPlugin.prev" class="com.github.kikimanjaro.intellify.actions.Prev"
-                text="Previous (Intellify)"
-                description="Previous track" icon="/icons/prev.svg">
-            <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="before"
-                          relative-to-action="SpotifyPlugin.playpause"/>
-        </action>
-        <action id="SpotifyPlugin.next" class="com.github.kikimanjaro.intellify.actions.Next" text="Next (Intellify)"
-                description="Next track" icon="/icons/next.svg">
-            <add-to-group group-id="SpotifyPlugin.SpotifyGroup" anchor="after"
-                          relative-to-action="SpotifyPlugin.playpause"/>
-        </action>
     </actions>
 </idea-plugin>

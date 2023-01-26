@@ -5,6 +5,9 @@
 ## [Unreleased]
 ### Added
 
+## [0.0.4]
+- Add popup to control currently played song
+
 ## [0.0.3]
 - Compatibility fixes
 

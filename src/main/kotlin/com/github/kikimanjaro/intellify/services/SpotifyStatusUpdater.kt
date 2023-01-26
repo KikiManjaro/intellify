@@ -1,9 +1,5 @@
 package com.github.kikimanjaro.intellify.services
 
-import com.github.kikimanjaro.intellify.actions.Next
-import com.github.kikimanjaro.intellify.actions.PlayPause
-import com.github.kikimanjaro.intellify.actions.Prev
-import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.wm.StatusBar
 import javax.swing.Icon
@@ -14,13 +10,12 @@ class SpotifyStatusUpdater(
     private var stop = false
     private val spotifyActiveIcon: Icon = IconLoader.getIcon("/icons/spotify.svg", this::class.java)
     private val spotifyInactiveIcon: Icon = IconLoader.getIcon("/icons/spotify-inactive.svg", this::class.java)
+    val playIcon: Icon = IconLoader.getIcon("/icons/play.svg", this::class.java)
+    val pauseIcon: Icon = IconLoader.getIcon("/icons/pause.svg", this::class.java)
+    val nextIcon: Icon = IconLoader.getIcon("/icons/next.svg", this::class.java)
+    val prevIcon: Icon = IconLoader.getIcon("/icons/prev.svg", this::class.java)
     val currentIcon: Icon
         get() = if (SpotifyService.title.isNotEmpty()) spotifyActiveIcon else spotifyInactiveIcon
-
-    private var playPauseAction: PlayPause? =
-        ActionManager.getInstance().getAction("SpotifyPlugin.playpause") as PlayPause
-    private var prevAction: Prev? = ActionManager.getInstance().getAction("SpotifyPlugin.prev") as Prev
-    private var nextAction: Next? = ActionManager.getInstance().getAction("SpotifyPlugin.next") as Next
 
     override fun run() {
         while (!stop) { //TODO: change with timer
@@ -35,9 +30,7 @@ class SpotifyStatusUpdater(
     }
 
     private fun updateUI() {
-        playPauseAction?.setActive(SpotifyService.title.isNotEmpty())
-        prevAction?.setActive(SpotifyService.title.isNotEmpty())
-        nextAction?.setActive(SpotifyService.title.isNotEmpty())
+        SpotifyService.currentPanel?.update()
         statusBar?.updateWidget("Intellify")
     }
 

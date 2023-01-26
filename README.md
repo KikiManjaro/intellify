@@ -1,11 +1,10 @@
 # Intellify
 
-[![Version](https://img.shields.io/jetbrains/plugin/v/PLUGIN_ID)](https://plugins.jetbrains.com/plugin/PLUGIN_ID/versions)
-[![Rating](https://img.shields.io/jetbrains/plugin/r/rating/PLUGIN_ID)](https://plugins.jetbrains.com/plugin/PLUGIN_ID/reviews)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/PLUGIN_ID)](https://plugins.jetbrains.com/plugin/PLUGIN_ID)
+[![Version](https://img.shields.io/jetbrains/plugin/v/20623-intellify)](https://plugins.jetbrains.com/plugin/PLUGIN_ID/20623-intellify)
+[![Rating](https://img.shields.io/jetbrains/plugin/r/rating/20623-intellify)](https://plugins.jetbrains.com/plugin/PLUGIN_ID/20623-intellify)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/20623-intellify)](https://plugins.jetbrains.com/plugin/20623-intellify)
 
-![TopScreenshot](https://user-images.githubusercontent.com/59285425/191522483-a2ddc3e7-775a-4c7a-b5a6-09d4e39d1e48.png)
-![BottomScreenshot](https://user-images.githubusercontent.com/59285425/191522742-f234069e-40dc-4e37-8015-a55044eda01e.png)
+![PopupScreenshot](https://user-images.githubusercontent.com/59285425/214960689-08ba6172-68f0-4408-8ed1-045e0830be0f.png)
 
 <!-- Plugin description -->
 
