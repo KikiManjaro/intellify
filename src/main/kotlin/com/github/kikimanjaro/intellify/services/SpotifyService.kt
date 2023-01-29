@@ -8,6 +8,7 @@ import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.remoteServer.util.CloudConfigurationUtil.createCredentialAttributes
+import jnr.posix.BaseMsgHdr
 import se.michaelthelin.spotify.SpotifyApi
 import se.michaelthelin.spotify.SpotifyHttpManager
 import se.michaelthelin.spotify.enums.AuthorizationScope
@@ -52,6 +53,9 @@ object SpotifyService {
     var artist = ""
     var song = ""
     var imageUrl = ""
+
+    var durationMs = 0
+    var progressInMs = 0
 
     var isPlaying = false
 
@@ -129,9 +133,7 @@ object SpotifyService {
     fun getInformationAboutUsersCurrentPlayingTrack() {
         try {
             if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                val currentlyPlayingContextFuture = spotifyApi.usersCurrentlyPlayingTrack.build().executeAsync()
-
-                val currentlyPlayingContext = currentlyPlayingContextFuture.join()
+                val currentlyPlayingContext = spotifyApi.usersCurrentlyPlayingTrack.build().execute()
                 if (currentlyPlayingContext.item is Track) {
                     isPlaying = currentlyPlayingContext.is_playing
                     val track = currentlyPlayingContext.item as Track
@@ -139,6 +141,8 @@ object SpotifyService {
                     artist = track.artists[0].name
                     title = track.name
                     title += " - " + track.artists[0].name
+                    durationMs = track.durationMs
+                    progressInMs = currentlyPlayingContext.progress_ms
                     if (track.album != null && track.album.images.isNotEmpty()) {
                         imageUrl = track.album.images[0].url
                     } else {
@@ -161,7 +165,7 @@ object SpotifyService {
     fun pauseTrack() {
         try {
             if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.pauseUsersPlayback().build().executeAsync()
+                spotifyApi.pauseUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -175,7 +179,7 @@ object SpotifyService {
     fun startTrack() {
         try {
             if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.startResumeUsersPlayback().build().executeAsync()
+                spotifyApi.startResumeUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -189,7 +193,7 @@ object SpotifyService {
     fun nextTrack() {
         try {
             if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.skipUsersPlaybackToNextTrack().build().executeAsync()
+                spotifyApi.skipUsersPlaybackToNextTrack().build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -203,7 +207,21 @@ object SpotifyService {
     fun prevTrack() {
         try {
             if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.skipUsersPlaybackToPreviousTrack().build().executeAsync()
+                spotifyApi.skipUsersPlaybackToPreviousTrack().build().execute()
+            }
+        } catch (e: CompletionException) {
+            println("Error: " + e.cause!!.message)
+        } catch (e: CancellationException) {
+            println("Async operation cancelled.")
+        } catch (e: Exception) {
+            println("Error: " + e.message)
+        }
+    }
+
+    fun setProgress(progressInMsToGoTo: Int) {
+        try {
+            if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
+                spotifyApi.seekToPositionInCurrentlyPlayingTrack(progressInMsToGoTo).build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
