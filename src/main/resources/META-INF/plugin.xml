@@ -2,7 +2,7 @@
 <idea-plugin>
     <id>com.github.kikimanjaro.intellify</id>
     <name>Intellify</name>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
     <idea-version since-build="193"/>
     <vendor email="kylian.meulin@gmail.com">KikiManjaro</vendor>
 
@@ -18,6 +18,7 @@
     ]]></description>
 
     <change-notes><![CDATA[
+      <em>0.0.5 Add progress bar for current song and improve feedback speed</em><br>
       <em>0.0.4 Add popup to control currently played song</em><br>
       <em>0.0.3 Compatibility fixes</em><br>
       <em>0.0.2 Change Icon</em><br>

@@ -5,6 +5,9 @@
 ## [Unreleased]
 ### Added
 
+## [0.0.5]
+- Add progress bar for current song and improve feedback speed
+
 ## [0.0.4]
 - Add popup to control currently played song
 
