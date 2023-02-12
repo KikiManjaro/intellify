@@ -8,10 +8,10 @@ import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.remoteServer.util.CloudConfigurationUtil.createCredentialAttributes
-import jnr.posix.BaseMsgHdr
 import se.michaelthelin.spotify.SpotifyApi
 import se.michaelthelin.spotify.SpotifyHttpManager
 import se.michaelthelin.spotify.enums.AuthorizationScope
+import se.michaelthelin.spotify.exceptions.detailed.UnauthorizedException
 import se.michaelthelin.spotify.model_objects.specification.Track
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest
 import java.io.BufferedReader
@@ -157,6 +157,9 @@ object SpotifyService {
             refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
             println("Async operation cancelled.")
+        } catch (e: UnauthorizedException) {
+            println("Unauthorized.")
+            refreshAccessTokenWithRefreshToken()
         } catch (e: Exception) {
             println("Error: " + e.message)
         }

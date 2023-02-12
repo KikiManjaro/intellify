@@ -97,8 +97,8 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                             popup.show(RelativePoint(Point(mouseX.toInt(), mouseY.toInt())))
                             popup.setLocation(
                                 Point(
-                                    mouseX.toInt() - spotifyPanel.height / 2,
-                                    (mouseY.toInt() - spotifyPanel.width * 1.2).toInt()
+                                    (mouseX - spotifyPanel.width / 2).toInt(),
+                                    (mouseY - spotifyPanel.height * 1.05).toInt()
                                 )
                             )
                         }.onFailure { e ->
