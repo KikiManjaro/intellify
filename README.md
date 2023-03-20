@@ -8,10 +8,7 @@
 
 <!-- Plugin description -->
 
-The Intellify plugin for IntelliJ IDEA and other JetBrains IDEs.
-
-This is the [Intellify plugin](https://plugins.jetbrains.com/plugin/PLUGIN_ID/versions)
-for [JetBrains IntelliJ IDEA](https://www.jetbrains.com/idea/). This is basically a minimal Spotify integration, displaying the current playing track in Status Bottom Bar and Prev, Play/Pause, Next buttons and Album Cover in a popup.
+Introducing the [Intellify plugin](https://plugins.jetbrains.com/plugin/PLUGIN_ID/versions) for [JetBrains IDE's](https://www.jetbrains.com/idea/)! This minimalistic Spotify integration allows you to seamlessly listen to your favorite tunes while coding. With the ability to display the current playing track in the Status Bottom Bar and Prev, Play/Pause, Next buttons and Album Cover in a popup, you'll never miss a beat. Say goodbye to switching between tabs to change your music and hello to an integrated and uninterrupted workflow. Download the Intellify plugin today and experience the perfect balance of productivity and enjoyment!
 
 <!-- Plugin description end -->
 
