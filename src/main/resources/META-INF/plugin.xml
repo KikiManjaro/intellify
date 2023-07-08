@@ -41,6 +41,18 @@
     </applicationListeners>
 
     <actions>
+        <action id="playPauseActionID"
+                class="com.github.kikimanjaro.intellify.actions.TogglePlayPauseAction"
+                text="Intellify Toggle Play"
+                description="Tell Intellify to toggle playing or pausing"/>
+        <action id="prevTrackActionID"
+                class="com.github.kikimanjaro.intellify.actions.PrevTrackAction"
+                text="Intellify Previous Track"
+                description="Tell Intellify to play the previous track"/>
+        <action id="nextTackActionID"
+                class="com.github.kikimanjaro.intellify.actions.NextTrackAction"
+                text="Intellify Next Track"
+                description="Tell Intellify to play the next track"/>
         <group id="SpotifyPlugin.SpotifyGroup" icon="/icons/spotify.svg">
             <add-to-group group-id="NavBarToolBar" anchor="before" relative-to-action="ToolbarRunGroup"/>
         </group>
