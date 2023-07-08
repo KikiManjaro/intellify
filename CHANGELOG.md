@@ -5,6 +5,12 @@
 ## [Unreleased]
 ### Added
 
+## [0.0.7]
+- Add actions so key mappings can be applied
+
+## [0.0.6]
+- Fix authorisation issue
+
 ## [0.0.5]
 - Add progress bar for current song and improve feedback speed
 
