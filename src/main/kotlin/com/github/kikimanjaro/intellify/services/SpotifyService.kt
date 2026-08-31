@@ -27,6 +27,8 @@ import kotlin.concurrent.thread
 object SpotifyService {
     var currentPanel: SpotifyPanel? = null
     private const val codeServiceName = "Intellify-code"
+    private const val accessServiceName = "Intellify-access"
+    @Deprecated("Typo alias, kept for migration")
     private const val accesServiceName = "Intellify-acces"
     private const val refreshServiceName = "Intellify-refresh"
     private val redirectUri =
@@ -236,7 +238,7 @@ object SpotifyService {
     }
 
     fun openServer() {
-        val server = ServerSocket(30498)
+        val server = ServerSocket(30498).apply { soTimeout = 300000 } // 5 min timeout for OAuth callback
 //        println("Server is running on port ${server.localPort}")
 
         var stop = false;
@@ -283,12 +285,19 @@ object SpotifyService {
                         saveCode(code)
                         getTokensFromCode()
                         stop = true
-                        Thread.sleep(10000)
-                        socket.close()
+                        // Give browser time to render success page then close
+                        Thread.sleep(2000)
+                        try { socket.close() } catch (_: Exception) {}
+                        try { server.close() } catch (_: Exception) {}
                     }
+                } catch (e: java.net.SocketTimeoutException) {
+                    println("OAuth callback timed out")
+                    stop = true
+                    try { server.close() } catch (_: Exception) {}
                 } catch (e: Exception) {
                     println("Socket error: " + e.message)
                     stop = true
+                    try { server.close() } catch (_: Exception) {}
                 }
             }
         }
@@ -308,14 +317,9 @@ object SpotifyService {
 
     private fun saveAccessToken(token: String) {
         val credentialAttributes: CredentialAttributes? =
-            createCredentialAttributes(accesServiceName, "user") // see previous sample
-        val credentials = Credentials(accesServiceName, token)
+            createCredentialAttributes(accessServiceName, "user") // see previous sample
+        val credentials = Credentials(accessServiceName, token)
         PasswordSafe.instance.set(credentialAttributes!!, credentials)
-    }
-
-    private fun retrieveAccessToken(): String? {
-        val credentialAttributes = createCredentialAttributes(accesServiceName, "user")
-        return PasswordSafe.instance.getPassword(credentialAttributes!!)
     }
 
     private fun saveRefreshToken(token: String) {
@@ -327,6 +331,50 @@ object SpotifyService {
 
     private fun retrieveRefreshToken(): String? {
         val credentialAttributes = createCredentialAttributes(refreshServiceName, "user")
-        return PasswordSafe.instance.getPassword(credentialAttributes!!)
+        // Try new name first, fall back to legacy typo name for migration
+        val token = PasswordSafe.instance.getPassword(credentialAttributes!!)
+        if (token != null) return token
+        val legacyAttributes = createCredentialAttributes(accesServiceName, "user")
+        return PasswordSafe.instance.getPassword(legacyAttributes!!)
+    }
+
+    /** Clears all stored Spotify credentials — used for switching accounts (issue #4). */
+    fun clearCredentials() {
+        for (serviceName in listOf(codeServiceName, accessServiceName, refreshServiceName, accesServiceName)) {
+            try {
+                val attrs = createCredentialAttributes(serviceName, "user")
+                PasswordSafe.instance.set(attrs!!, null)
+            } catch (_: Exception) { }
+        }
+        code = ""
+        spotifyApi.accessToken = null
+        spotifyApi.refreshToken = null
+        title = ""; artist = ""; song = ""; imageUrl = ""
+        durationMs = 0; progressInMs = 0; isPlaying = false
+    }
+
+    fun changeAccount() {
+        clearCredentials()
+        getCodeFromBrowser()
+    }
+
+    private fun retrieveAccessToken(): String? {
+        val credentialAttributes = createCredentialAttributes(accessServiceName, "user")
+        val token = PasswordSafe.instance.getPassword(credentialAttributes!!)
+        if (token != null) return token
+        // Fall back to legacy typo key
+        val legacyAttributes = createCredentialAttributes(accesServiceName, "user")
+        return PasswordSafe.instance.getPassword(legacyAttributes!!)
+    }
+
+    private fun saveAccessTokenCompat(token: String) {
+        saveAccessToken(token)
+        // Also clear legacy entry to avoid confusion
+        try {
+            val legacy = createCredentialAttributes(accesServiceName, "user")
+            if (PasswordSafe.instance.getPassword(legacy!!) != null) {
+                PasswordSafe.instance.set(legacy, Credentials(accessServiceName, token))
+            }
+        } catch (_: Exception) { }
     }
 }
