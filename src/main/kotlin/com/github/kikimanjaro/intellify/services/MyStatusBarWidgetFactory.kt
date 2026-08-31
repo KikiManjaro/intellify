@@ -10,10 +10,13 @@ import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidgetFactory
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.Consumer
-import java.awt.*
+import com.intellij.util.ui.JBUI
+import java.awt.Dimension
+import java.awt.GraphicsEnvironment
+import java.awt.Point
+import java.awt.Rectangle
 import java.awt.event.MouseEvent
-import javax.swing.*
-
+import javax.swing.Icon
 
 class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     private var statusUpdaterThread: Thread? = null
@@ -21,103 +24,134 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     private lateinit var intellifyWidget: StatusBarWidget
     private val name = "Intellify"
 
-    override fun getId(): String {
-        return name
-    }
+    override fun getId(): String = name
 
-    override fun getDisplayName(): String {
-        return name
-    }
+    override fun getDisplayName(): String = name
 
-    override fun isAvailable(project: Project): Boolean {
-        return true
-    }
+    override fun isAvailable(project: Project): Boolean = true
 
     override fun createWidget(project: Project): StatusBarWidget {
         intellifyWidget = object : StatusBarWidget {
 
             override fun dispose() {
-                spotifyStatusUpdater!!.stop()
-                statusUpdaterThread!!.interrupt()
+                spotifyStatusUpdater?.stop()
+                statusUpdaterThread?.interrupt()
             }
 
-            override fun ID(): String {
-                return name
-            }
+            override fun ID(): String = name
 
             override fun install(statusBar: StatusBar) {
                 spotifyStatusUpdater = SpotifyStatusUpdater(statusBar)
-                statusUpdaterThread = Thread(spotifyStatusUpdater)
-                statusUpdaterThread!!.start()
+                statusUpdaterThread = Thread(spotifyStatusUpdater, "Intellify-SpotifyStatusUpdater").apply {
+                    isDaemon = true
+                    start()
+                }
             }
 
-            override fun getPresentation(): StatusBarWidget.WidgetPresentation? {
+            override fun getPresentation(): StatusBarWidget.WidgetPresentation {
                 return object : StatusBarWidget.MultipleTextValuesPresentation {
-                    override fun getTooltipText(): String? {
-                        return "Intellify"
-                    }
+                    override fun getTooltipText(): String = "Intellify - Click to open Spotify controls"
 
                     override fun getClickConsumer(): Consumer<MouseEvent>? {
-                        return Consumer {
-                            SpotifyService.getCodeFromBrowser()
+                        return Consumer { event ->
+                            showPopup(event, statusBar)
                         }
                     }
 
                     override fun getPopupStep(): ListPopup? {
-                        kotlin.runCatching {
-//                            val layeredPane = JPanel(null)
-//
-//                            val imagePanel = JPanel()
-//                            val image: BufferedImage = ImageIO.read(URL(SpotifyService.imageUrl))
-//                            val resizedImage: Image = image.getScaledInstance(200, 200, Image.SCALE_SMOOTH)
-//                            val label = JLabel(ImageIcon(resizedImage))
-//                            imagePanel.add(label)
-//                            layeredPane.add(imagePanel)
-//
-//                            val buttonPanel = JPanel(BorderLayout())
-//                            buttonPanel.setSize(200, 200)
-//                            buttonPanel.isOpaque = false
-//                            val playPauseButton = JButton(spotifyStatusUpdater!!.playIcon)
-//                            buttonPanel.add(playPauseButton, BorderLayout.CENTER)
-//                            val prevButton = JButton(spotifyStatusUpdater!!.prevIcon)
-//                            buttonPanel.add(prevButton, BorderLayout.WEST)
-//                            val nextButton = JButton(spotifyStatusUpdater!!.nextIcon)
-//                            buttonPanel.add(nextButton, BorderLayout.EAST)
-//                            layeredPane.add(buttonPanel)
-
-                            val spotifyPanel = SpotifyPanel(spotifyStatusUpdater!!)
-                            SpotifyService.currentPanel = spotifyPanel
-                            val popup =
-                                JBPopupFactory.getInstance().createComponentPopupBuilder(spotifyPanel, spotifyPanel)
-                                    .setRequestFocus(true)
-                                    .setCancelOnClickOutside(true)
-                                    .createPopup()
-                            val mouseX = MouseInfo.getPointerInfo().location.getX()
-                            val mouseY = MouseInfo.getPointerInfo().location.getY()
-                            popup.show(RelativePoint(Point(mouseX.toInt(), mouseY.toInt())))
-                            popup.setLocation(
-                                Point(
-                                    (mouseX - spotifyPanel.width / 2).toInt(),
-                                    (mouseY - spotifyPanel.height * 1.05).toInt()
-                                )
-                            )
-                        }.onFailure { e ->
-                            e.printStackTrace()
-                        }
+                        // Popup is shown via clickConsumer to get MouseEvent for correct anchoring.
+                        // Returning null avoids the default ListPopup handling which uses unstable coordinates in New UI.
                         return null
                     }
 
-                    override fun getSelectedValue(): String? {
-                        return SpotifyService.title.isNotEmpty().let {
-                            if (it) {
-                                " " + SpotifyService.title
-                            } else {
-                                " No song playing"
+                    /**
+                     * Shows the Spotify popup anchored to the status bar widget instead of absolute mouse coordinates.
+                     * Fixes #1: Window Position out of bounds when New UI (Beta) is enabled.
+                     * Uses a static anchor (status bar component) + screen bounds clamping + JBUI scaling for HiDPI.
+                     */
+                    private fun showPopup(event: MouseEvent?, statusBar: StatusBar?) {
+                        kotlin.runCatching {
+                            val updater = spotifyStatusUpdater ?: return@runCatching
+                            if (SpotifyService.code.isEmpty()) {
+                                SpotifyService.getCodeFromBrowser()
+                                return@runCatching
                             }
+                            val spotifyPanel = SpotifyPanel(updater)
+                            SpotifyService.currentPanel = spotifyPanel
+
+                            // HiDPI-aware preferred size via JBUI.scale
+                            val scaledWidth = JBUI.scale(spotifyPanel.customWidth.coerceAtLeast(200))
+                            val scaledHeight = JBUI.scale(spotifyPanel.customHeight.coerceAtLeast(200))
+                            spotifyPanel.preferredSize = Dimension(scaledWidth, scaledHeight + JBUI.scale(80))
+
+                            val popup = JBPopupFactory.getInstance()
+                                .createComponentPopupBuilder(spotifyPanel, spotifyPanel)
+                                .setRequestFocus(true)
+                                .setCancelOnClickOutside(true)
+                                .setMovable(true)
+                                .setResizable(false)
+                                .setTitle("Intellify")
+                                .createPopup()
+
+                            // Static anchoring: prefer statusBar component (stable in New UI), fallback to mouse event
+                            val anchorPoint: RelativePoint = when {
+                                statusBar?.component != null -> {
+                                    val comp = statusBar.component
+                                    val compLocation = comp.locationOnScreen
+                                    val compSize = comp.size
+                                    val gap = JBUI.scale(8)
+                                    val x = compLocation.x + compSize.width / 2
+                                    val y = compLocation.y - gap
+                                    val popupSize = spotifyPanel.preferredSize
+                                    val clamped = clampToScreen(Point(x - popupSize.width / 2, y - popupSize.height), popupSize)
+                                    RelativePoint(clamped)
+                                }
+                                event != null -> {
+                                    val popupSize = spotifyPanel.preferredSize
+                                    val raw = Point(event.locationOnScreen.x - popupSize.width / 2, event.locationOnScreen.y - popupSize.height - JBUI.scale(8))
+                                    RelativePoint(clampToScreen(raw, popupSize))
+                                }
+                                else -> RelativePoint.getCenterOf(spotifyPanel)
+                            }
+
+                            popup.show(anchorPoint)
+                        }.onFailure { e ->
+                            e.printStackTrace()
                         }
                     }
 
-                    override fun getIcon(): Icon? {
+                    private fun clampToScreen(point: Point, popupSize: Dimension): Point {
+                        val screenBounds = getVisibleScreenBounds(point)
+                        val margin = JBUI.scale(4)
+                        var x = point.x.coerceIn(screenBounds.x + margin, screenBounds.x + screenBounds.width - popupSize.width - margin)
+                        var y = point.y.coerceIn(screenBounds.y + margin, screenBounds.y + screenBounds.height - popupSize.height - margin)
+                        if (x < screenBounds.x) x = screenBounds.x + margin
+                        if (y < screenBounds.y) y = screenBounds.y + margin
+                        return Point(x, y)
+                    }
+
+                    private fun getVisibleScreenBounds(point: Point): Rectangle {
+                        val env = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                        for (device in env.screenDevices) {
+                            for (config in device.configurations) {
+                                val bounds = config.bounds
+                                if (bounds.contains(point)) {
+                                    return bounds
+                                }
+                            }
+                        }
+                        return env.maximumWindowBounds ?: Rectangle(0, 0, 1920, 1080)
+                    }
+
+                    override fun getSelectedValue(): String? {
+                        return if (SpotifyService.title.isNotEmpty()) {
+                            " " + SpotifyService.title
+                        } else {
+                            " No song playing"
+                        }
+                    }
+
+                    override fun getIcon(): Icon {
                         return spotifyStatusUpdater?.currentIcon ?: IconLoader.getIcon(
                             "/icons/spotify-inactive.svg",
                             this::class.java
@@ -130,11 +164,9 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     }
 
     override fun disposeWidget(widget: StatusBarWidget) {
-        spotifyStatusUpdater!!.stop()
-        statusUpdaterThread!!.interrupt()
+        spotifyStatusUpdater?.stop()
+        statusUpdaterThread?.interrupt()
     }
 
-    override fun canBeEnabledOn(statusBar: StatusBar): Boolean {
-        return true
-    }
+    override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
 }
