@@ -17,7 +17,7 @@ jobs:
     steps:
 
       - name: Fetch Sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.release.tag_name }}
 
