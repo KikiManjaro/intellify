@@ -2,6 +2,7 @@ package com.github.kikimanjaro.intellify.ui
 
 import com.github.kikimanjaro.intellify.services.SpotifyService
 import com.github.kikimanjaro.intellify.services.SpotifyStatusUpdater
+import com.intellij.openapi.diagnostic.Logger
 import java.awt.*
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
@@ -12,6 +13,7 @@ import javax.swing.plaf.basic.BasicSliderUI
 
 
 class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(BorderLayout()) {
+    private val logger = Logger.getInstance(SpotifyPanel::class.java)
     val customWidth = 200
     val customHeight = 200
 
@@ -28,10 +30,8 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
     private val slider: JSlider
 
     init {
-        val image: BufferedImage = ImageIO.read(URL(SpotifyService.imageUrl))
-        val scaledImage = image.getScaledInstance(customWidth, customHeight, Image.SCALE_SMOOTH)
-
-        imageIcon = ImageIcon(scaledImage)
+        val initialImage = loadAlbumImage()
+        imageIcon = ImageIcon(initialImage ?: BufferedImage(customWidth, customHeight, BufferedImage.TYPE_INT_ARGB))
         imageLabel = JLabel(imageIcon)
 
         artistNameLabel = JLabel(SpotifyService.artist, JLabel.CENTER)
@@ -71,13 +71,13 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
             update()
         }
 
-        slider = object  : JSlider(0, SpotifyService.durationMs){
+        slider = object  : JSlider(0, SpotifyService.durationMs.coerceAtLeast(1)){
             override fun updateUI() {
                 setUI(CustomSliderUI(this));
             }
         }
         slider.setBorder(BorderFactory.createEmptyBorder(6,0,4,0));
-        slider.value = SpotifyService.progressInMs
+        slider.value = SpotifyService.progressInMs.coerceIn(0, slider.maximum)
         slider.addMouseListener(object : java.awt.event.MouseAdapter() {
             override fun mouseReleased(e: java.awt.event.MouseEvent) {
                 val newVal = slider.value
@@ -87,7 +87,6 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
                 slider.value = newVal
             }
         })
-
         // Add the buttons to the button panel
         buttonPanel.add(prevButton, BorderLayout.WEST)
         buttonPanel.add(playPauseButton, BorderLayout.CENTER)
@@ -102,16 +101,25 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
         add(bottomPanel, BorderLayout.SOUTH)
     }
 
+    private fun loadAlbumImage(): Image? {
+        if (SpotifyService.imageUrl.isBlank()) return null
+        return runCatching {
+            val image: BufferedImage = ImageIO.read(URL(SpotifyService.imageUrl)) ?: return null
+            image.getScaledInstance(customWidth, customHeight, Image.SCALE_SMOOTH)
+        }.onFailure { e ->
+            logger.warn("Failed to load album image: ${SpotifyService.imageUrl}", e)
+        }.getOrNull()
+    }
+
     fun update() {
         artistNameLabel.text = SpotifyService.artist
         songNameLabel.text = SpotifyService.song
         titlePanel.repaint()
 
-        val image: BufferedImage = ImageIO.read(URL(SpotifyService.imageUrl))
-        val scaledImage = image.getScaledInstance(customWidth, customHeight, Image.SCALE_SMOOTH)
-
-        imageIcon.image = scaledImage
-        imageLabel.repaint()
+        loadAlbumImage()?.let { scaledImage ->
+            imageIcon.image = scaledImage
+            imageLabel.repaint()
+        }
 
         if (SpotifyService.isPlaying) {
             playPauseButton.icon = spotifyStatusUpdater.pauseIcon
@@ -119,7 +127,8 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
             playPauseButton.icon = spotifyStatusUpdater.playIcon
         }
 
-        slider.value = SpotifyService.progressInMs
+        slider.maximum = SpotifyService.durationMs.coerceAtLeast(1)
+        slider.value = SpotifyService.progressInMs.coerceIn(0, slider.maximum)
     }
 }
 
