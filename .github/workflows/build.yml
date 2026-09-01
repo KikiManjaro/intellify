@@ -87,7 +87,7 @@ jobs:
           path: ${{ github.workspace }}/build/reports/pluginVerifier
 
       - name: Qodana - Code Inspection
-        uses: JetBrains/qodana-action@v2023.3.1
+        uses: JetBrains/qodana-action@v2026.2.0
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
