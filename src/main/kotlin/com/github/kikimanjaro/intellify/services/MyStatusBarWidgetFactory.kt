@@ -1,10 +1,6 @@
 package com.github.kikimanjaro.intellify.services
 
-import com.github.kikimanjaro.intellify.ui.SpotifyPanel
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.openapi.ui.popup.ListPopup
-import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidgetFactory
@@ -16,6 +12,7 @@ import javax.swing.*
 
 
 class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
+    private val logger = Logger.getInstance(MyStatusBarWidgetFactory::class.java)
     private var statusUpdaterThread: Thread? = null
     private var spotifyStatusUpdater: SpotifyStatusUpdater? = null
     private lateinit var intellifyWidget: StatusBarWidget
@@ -29,16 +26,16 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
         return name
     }
 
-    override fun isAvailable(project: Project): Boolean {
+    override fun isAvailable(project: com.intellij.openapi.project.Project): Boolean {
         return true
     }
 
-    override fun createWidget(project: Project): StatusBarWidget {
+    override fun createWidget(project: com.intellij.openapi.project.Project): StatusBarWidget {
         intellifyWidget = object : StatusBarWidget {
 
             override fun dispose() {
-                spotifyStatusUpdater!!.stop()
-                statusUpdaterThread!!.interrupt()
+                spotifyStatusUpdater?.stop()
+                statusUpdaterThread?.interrupt()
             }
 
             override fun ID(): String {
@@ -47,8 +44,11 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
 
             override fun install(statusBar: StatusBar) {
                 spotifyStatusUpdater = SpotifyStatusUpdater(statusBar)
-                statusUpdaterThread = Thread(spotifyStatusUpdater)
-                statusUpdaterThread!!.start()
+                statusUpdaterThread = Thread(spotifyStatusUpdater).apply {
+                    isDaemon = true
+                    name = "Intellify-Spotify-Updater"
+                    start()
+                }
             }
 
             override fun getPresentation(): StatusBarWidget.WidgetPresentation? {
@@ -63,32 +63,13 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                         }
                     }
 
-                    override fun getPopupStep(): ListPopup? {
-                        kotlin.runCatching {
-//                            val layeredPane = JPanel(null)
-//
-//                            val imagePanel = JPanel()
-//                            val image: BufferedImage = ImageIO.read(URL(SpotifyService.imageUrl))
-//                            val resizedImage: Image = image.getScaledInstance(200, 200, Image.SCALE_SMOOTH)
-//                            val label = JLabel(ImageIcon(resizedImage))
-//                            imagePanel.add(label)
-//                            layeredPane.add(imagePanel)
-//
-//                            val buttonPanel = JPanel(BorderLayout())
-//                            buttonPanel.setSize(200, 200)
-//                            buttonPanel.isOpaque = false
-//                            val playPauseButton = JButton(spotifyStatusUpdater!!.playIcon)
-//                            buttonPanel.add(playPauseButton, BorderLayout.CENTER)
-//                            val prevButton = JButton(spotifyStatusUpdater!!.prevIcon)
-//                            buttonPanel.add(prevButton, BorderLayout.WEST)
-//                            val nextButton = JButton(spotifyStatusUpdater!!.nextIcon)
-//                            buttonPanel.add(nextButton, BorderLayout.EAST)
-//                            layeredPane.add(buttonPanel)
-
-                            val spotifyPanel = SpotifyPanel(spotifyStatusUpdater!!)
+                    override fun getPopupStep(): com.intellij.openapi.ui.popup.ListPopup? {
+                        return runCatching {
+                            val spotifyPanel = SpotifyPanel(spotifyStatusUpdater ?: return@runCatching null)
+                                ?: return@runCatching null
                             SpotifyService.currentPanel = spotifyPanel
                             val popup =
-                                JBPopupFactory.getInstance().createComponentPopupBuilder(spotifyPanel, spotifyPanel)
+                                com.intellij.openapi.ui.popup.JBPopupFactory.getInstance().createComponentPopupBuilder(spotifyPanel, spotifyPanel)
                                     .setRequestFocus(true)
                                     .setCancelOnClickOutside(true)
                                     .createPopup()
@@ -102,9 +83,8 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                                 )
                             )
                         }.onFailure { e ->
-                            e.printStackTrace()
-                        }
-                        return null
+                            logger.warn("Failed to show Intellify popup", e)
+                        }.getOrNull()
                     }
 
                     override fun getSelectedValue(): String? {
@@ -118,7 +98,7 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                     }
 
                     override fun getIcon(): Icon? {
-                        return spotifyStatusUpdater?.currentIcon ?: IconLoader.getIcon(
+                        return spotifyStatusUpdater?.currentIcon ?: com.intellij.openapi.util.IconLoader.getIcon(
                             "/icons/spotify-inactive.svg",
                             this::class.java
                         )
@@ -130,8 +110,10 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     }
 
     override fun disposeWidget(widget: StatusBarWidget) {
-        spotifyStatusUpdater!!.stop()
-        statusUpdaterThread!!.interrupt()
+        spotifyStatusUpdater?.stop()
+        statusUpdaterThread?.interrupt()
+        spotifyStatusUpdater = null
+        statusUpdaterThread = null
     }
 
     override fun canBeEnabledOn(statusBar: StatusBar): Boolean {

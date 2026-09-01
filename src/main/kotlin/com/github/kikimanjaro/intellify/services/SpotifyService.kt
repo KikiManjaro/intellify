@@ -8,6 +8,7 @@ import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.remoteServer.util.CloudConfigurationUtil.createCredentialAttributes
+import com.intellij.openapi.diagnostic.Logger
 import se.michaelthelin.spotify.SpotifyApi
 import se.michaelthelin.spotify.SpotifyHttpManager
 import se.michaelthelin.spotify.enums.AuthorizationScope
@@ -25,6 +26,7 @@ import kotlin.concurrent.thread
 
 
 object SpotifyService {
+    private val logger = Logger.getInstance(SpotifyService::class.java)
     var currentPanel: SpotifyPanel? = null
     private const val codeServiceName = "Intellify-code"
     private const val accesServiceName = "Intellify-acces"
@@ -73,19 +75,19 @@ object SpotifyService {
                 // Set access token for further "spotifyApi" object usage
                 spotifyApi.accessToken = authorizationCodeCredentials.accessToken
                 saveAccessToken(authorizationCodeCredentials.accessToken)
-                println("Expires in: " + authorizationCodeCredentials.expiresIn)
+                logger.info("Expires in: ${authorizationCodeCredentials.expiresIn}")
             } else if (spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
                 getTokensFromCode()
             } else {
                 getCodeFromBrowser()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
             getCodeFromBrowser()
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -99,17 +101,17 @@ object SpotifyService {
                 saveAccessToken(authorizationCodeCredentials.accessToken)
                 spotifyApi.refreshToken = authorizationCodeCredentials.refreshToken
                 saveRefreshToken(authorizationCodeCredentials.refreshToken)
-//                println("Expires in: " + authorizationCodeCredentials.expiresIn)
+//                logger.info("Expires in: ${authorizationCodeCredentials.expiresIn}")
             } else {
                 getCodeFromBrowser()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
             refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -122,11 +124,11 @@ object SpotifyService {
             openServer()
             BrowserUtil.browse(uri) //TODO: use embeded browser
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -153,15 +155,15 @@ object SpotifyService {
                 getTokensFromCode()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
             refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: UnauthorizedException) {
-            println("Unauthorized.")
+            logger.warn("Spotify unauthorized")
             refreshAccessTokenWithRefreshToken()
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -171,11 +173,11 @@ object SpotifyService {
                 spotifyApi.pauseUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -185,11 +187,11 @@ object SpotifyService {
                 spotifyApi.startResumeUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -199,11 +201,11 @@ object SpotifyService {
                 spotifyApi.skipUsersPlaybackToNextTrack().build().execute()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -213,11 +215,11 @@ object SpotifyService {
                 spotifyApi.skipUsersPlaybackToPreviousTrack().build().execute()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
@@ -227,69 +229,64 @@ object SpotifyService {
                 spotifyApi.seekToPositionInCurrentlyPlayingTrack(progressInMsToGoTo).build().execute()
             }
         } catch (e: CompletionException) {
-            println("Error: " + e.cause!!.message)
+            logger.warn("Spotify API error", e)
         } catch (e: CancellationException) {
-            println("Async operation cancelled.")
+            logger.warn("Async operation cancelled", e)
         } catch (e: Exception) {
-            println("Error: " + e.message)
+            logger.warn("Spotify API error", e)
         }
     }
 
     fun openServer() {
-        val server = ServerSocket(30498)
-//        println("Server is running on port ${server.localPort}")
+        val server = try {
+            ServerSocket(30498)
+        } catch (e: Exception) {
+            logger.warn("Failed to bind OAuth callback on port 30498", e)
+            return
+        }
 
-        var stop = false;
-        thread {
-            while (!stop) {
-                try {
-                    val socket = server.accept()
-                    println("Client connected")
-
-                    val input = socket.getInputStream()
-                    val output = socket.getOutputStream()
-                    val reader = BufferedReader(InputStreamReader(input))
-                    val writer = BufferedWriter(OutputStreamWriter(output))
-                    val line = reader.readLine()
-                    writer.write("HTTP/1.1 200 OK\r\n") //TODO: make this beautiful, maybe with an image
-                    writer.write(
-                        "<!DOCTYPE html>\n" +
-                                "<html lang=\"en\">\n" +
-                                "<head>\n" +
-                                "    <meta charset=\"UTF-8\">\n" +
-                                "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
-                                "    <title>My html page</title>\n" +
-                                "</head>\n" +
-                                "<body>\n" +
-                                "\n" +
-                                "    <p>\n" +
-                                "        Thank you for using Intellify.\n" +
-                                "    </p>\n" +
-                                "    \n" +
-                                "    <p>\n" +
-                                "         You can close this, it's useless now :p\n" +
-                                "    </p>\n" +
-                                "    \n" +
-                                "    <p>\n" +
-                                "         KikiManjaro\n" +
-                                "    </p>\n" +
-                                "    \n" +
-                                "</body>\n" +
-                                "</html>"
-                    )
-                    writer.flush()
-                    code = line.split("=")[1].split(" ")[0]
-                    if (code.isNotEmpty()) {
-                        saveCode(code)
-                        getTokensFromCode()
-                        stop = true
-                        Thread.sleep(10000)
-                        socket.close()
+        var stop = false
+        thread(isDaemon = true, name = "Intellify-OAuth-Callback") {
+            try {
+                while (!stop) {
+                    val socket = try {
+                        server.accept()
+                    } catch (e: Exception) {
+                        if (!stop) logger.warn("OAuth accept failed", e)
+                        break
                     }
-                } catch (e: Exception) {
-                    println("Socket error: " + e.message)
-                    stop = true
+                    socket.use { s ->
+                        try {
+                            logger.debug("OAuth client connected")
+                            val reader = BufferedReader(InputStreamReader(s.getInputStream()))
+                            val writer = BufferedWriter(OutputStreamWriter(s.getOutputStream()))
+                            val line = reader.readLine() ?: continue
+                            writer.write("HTTP/1.1 200 OK\r\n")
+                            writer.write("Content-Type: text/html; charset=UTF-8\r\n\r\n")
+                            writer.write(
+                                "<!DOCTYPE html>\n" +
+                                        "<html lang=\"en\">\n" +
+                                        "<head><meta charset=\"UTF-8\"><title>Intellify</title></head>\n" +
+                                        "<body><p>Thank you for using Intellify.</p><p>You can close this tab.</p><p>KikiManjaro</p></body>\n" +
+                                        "</html>"
+                            )
+                            writer.flush()
+                            // Robustly extract code param: ?code=xxx& or ?code=xxx HTTP
+                            val codeParam = line.substringAfter("code=", "").substringBefore("&").substringBefore(" ")
+                            if (codeParam.isNotEmpty()) {
+                                code = codeParam
+                                saveCode(code)
+                                getTokensFromCode()
+                                stop = true
+                            }
+                        } catch (e: Exception) {
+                            logger.warn("OAuth callback handling failed", e)
+                        }
+                    }
+                    if (stop) break
                 }
+            } finally {
+                runCatching { server.close() }
             }
         }
     }

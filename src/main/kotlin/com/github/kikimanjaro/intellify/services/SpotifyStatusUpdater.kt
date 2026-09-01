@@ -1,5 +1,6 @@
 package com.github.kikimanjaro.intellify.services
 
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.wm.StatusBar
 import javax.swing.Icon
@@ -7,7 +8,8 @@ import javax.swing.Icon
 class SpotifyStatusUpdater(
     private var statusBar: StatusBar?
 ) : Runnable {
-    private var stop = false
+    private val logger = Logger.getInstance(SpotifyStatusUpdater::class.java)
+    @Volatile private var stop = false
     private val spotifyActiveIcon: Icon = IconLoader.getIcon("/icons/spotify.svg", this::class.java)
     private val spotifyInactiveIcon: Icon = IconLoader.getIcon("/icons/spotify-inactive.svg", this::class.java)
     val playIcon: Icon = IconLoader.getIcon("/icons/play.svg", this::class.java)
@@ -18,13 +20,16 @@ class SpotifyStatusUpdater(
         get() = if (SpotifyService.title.isNotEmpty()) spotifyActiveIcon else spotifyInactiveIcon
 
     override fun run() {
-        while (!stop) { //TODO: change with timer
+        while (!stop) {
             try {
                 SpotifyService.getInformationAboutUsersCurrentPlayingTrack()
                 updateUI()
                 Thread.sleep(1000L)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                break
             } catch (e: Exception) {
-                e.printStackTrace()
+                logger.warn("Spotify status update failed", e)
             }
         }
     }
