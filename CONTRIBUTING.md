@@ -1,13 +1,10 @@
-
 # Contributing Guidelines
 
-Thank you for your interest in contributing to the Mario Progress Bar ! Please read, understand, and agree to the following before making your contribution. Please also ensure you have read and agreed to the [Code of Conduct](CODE_OF_CONDUCT.md).
+Thank you for your interest in contributing to **Intellify**! Please read, understand, and agree to the following before making your contribution. Please also ensure you have read and agreed to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-If you have any issues or questions, please, do not hesitate to contact [the maintainer](https://github.com/KikiManjaro) of this plugin.
+If you have any issues or questions, please do not hesitate to contact [the maintainer](https://github.com/KikiManjaro).
 
 ## Workflow
-
-The workflow for this project is pretty standard:
 
 ```none
 open issue and have it assigned to you
@@ -18,13 +15,13 @@ open issue and have it assigned to you
             v
 create feature/{issueNumber} or 
 {fix/issueNumber} branch based off
-   of the develop branch
+   of the main branch
             |
             v
     commit to fix issue
             │
             v
-open pull request to develop branch
+open pull request to main branch
             │
             v
        code review<────────┐
@@ -34,11 +31,11 @@ open pull request to develop branch
 approved, merged, issue closed
             |
             v
-release branch created from develop
+release branch created from main
     by project maintainer
             |
             v
-release branch merged to master
+release branch merged to main
             │
             v
          deployed
@@ -54,9 +51,9 @@ Please make sure all feature requests are clear, concise, feasible, useful, and 
 
 ## Pull Requests
 
-Pull requests for bugs or features are encouraged, but please open an issue first and ensure it has been discussed & approved. Your code will be reviewed as soon as possible; please be willing to accept feedback & and change your pull request as needed.
+Pull requests for bugs or features are encouraged, but please open an issue first and ensure it has been discussed & approved. Your code will be reviewed as soon as possible; please be willing to accept feedback & change your pull request as needed.
 
-Also ensure that the extension still runs properly after your changes, by using the built in extension debugger in IntelliJ.
+Also ensure that the plugin still runs properly after your changes, by using **Run IDE** (`./gradlew runIde`) to test locally.
 
 Ideally, we'd like to work with a branch-per-issue policy, as well as a one-commit-per-issue policy. Feel free to make a separate commit when addressing code review comments, or to amend your existing commit. If new commits are made, they may be squashed into the original before merging.
 
@@ -64,5 +61,5 @@ Preferably you should be using [signed commits](https://help.github.com/en/artic
 
 ### Additional PR Information
 
-* This plugin is written using Java 8 and the IntelliJ SDK.
+* This plugin is written in Kotlin (JVM target 11) and the IntelliJ Platform SDK.
 * Please also do your best to follow the existing code style. You may be asked to refactor your code if it does not match the existing style, in the interest of consistency.
