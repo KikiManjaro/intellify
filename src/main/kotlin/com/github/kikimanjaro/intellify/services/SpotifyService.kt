@@ -8,7 +8,6 @@ import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.remoteServer.util.CloudConfigurationUtil.createCredentialAttributes
-import com.intellij.openapi.diagnostic.Logger
 import se.michaelthelin.spotify.SpotifyApi
 import se.michaelthelin.spotify.SpotifyHttpManager
 import se.michaelthelin.spotify.enums.AuthorizationScope
@@ -26,9 +25,10 @@ import kotlin.concurrent.thread
 
 
 object SpotifyService {
-    private val logger = Logger.getInstance(SpotifyService::class.java)
     var currentPanel: SpotifyPanel? = null
     private const val codeServiceName = "Intellify-code"
+    private const val accessServiceName = "Intellify-access"
+    @Deprecated("Typo alias, kept for migration")
     private const val accesServiceName = "Intellify-acces"
     private const val refreshServiceName = "Intellify-refresh"
     private val redirectUri =
@@ -75,19 +75,19 @@ object SpotifyService {
                 // Set access token for further "spotifyApi" object usage
                 spotifyApi.accessToken = authorizationCodeCredentials.accessToken
                 saveAccessToken(authorizationCodeCredentials.accessToken)
-                logger.info("Expires in: ${authorizationCodeCredentials.expiresIn}")
+                println("Expires in: " + authorizationCodeCredentials.expiresIn)
             } else if (spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
                 getTokensFromCode()
             } else {
                 getCodeFromBrowser()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
             getCodeFromBrowser()
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -101,17 +101,17 @@ object SpotifyService {
                 saveAccessToken(authorizationCodeCredentials.accessToken)
                 spotifyApi.refreshToken = authorizationCodeCredentials.refreshToken
                 saveRefreshToken(authorizationCodeCredentials.refreshToken)
-//                logger.info("Expires in: ${authorizationCodeCredentials.expiresIn}")
+//                println("Expires in: " + authorizationCodeCredentials.expiresIn)
             } else {
                 getCodeFromBrowser()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
             refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -124,11 +124,11 @@ object SpotifyService {
             openServer()
             BrowserUtil.browse(uri) //TODO: use embeded browser
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -155,15 +155,15 @@ object SpotifyService {
                 getTokensFromCode()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
             refreshAccessTokenWithRefreshToken()
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: UnauthorizedException) {
-            logger.warn("Spotify unauthorized")
+            println("Unauthorized.")
             refreshAccessTokenWithRefreshToken()
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -173,11 +173,11 @@ object SpotifyService {
                 spotifyApi.pauseUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -187,11 +187,11 @@ object SpotifyService {
                 spotifyApi.startResumeUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -201,11 +201,11 @@ object SpotifyService {
                 spotifyApi.skipUsersPlaybackToNextTrack().build().execute()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -215,11 +215,11 @@ object SpotifyService {
                 spotifyApi.skipUsersPlaybackToPreviousTrack().build().execute()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
@@ -229,64 +229,76 @@ object SpotifyService {
                 spotifyApi.seekToPositionInCurrentlyPlayingTrack(progressInMsToGoTo).build().execute()
             }
         } catch (e: CompletionException) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.cause!!.message)
         } catch (e: CancellationException) {
-            logger.warn("Async operation cancelled", e)
+            println("Async operation cancelled.")
         } catch (e: Exception) {
-            logger.warn("Spotify API error", e)
+            println("Error: " + e.message)
         }
     }
 
     fun openServer() {
-        val server = try {
-            ServerSocket(30498)
-        } catch (e: Exception) {
-            logger.warn("Failed to bind OAuth callback on port 30498", e)
-            return
-        }
+        val server = ServerSocket(30498).apply { soTimeout = 300000 } // 5 min timeout for OAuth callback
+//        println("Server is running on port ${server.localPort}")
 
-        var stop = false
-        thread(isDaemon = true, name = "Intellify-OAuth-Callback") {
-            try {
-                while (!stop) {
-                    val socket = try {
-                        server.accept()
-                    } catch (e: Exception) {
-                        if (!stop) logger.warn("OAuth accept failed", e)
-                        break
+        var stop = false;
+        thread {
+            while (!stop) {
+                try {
+                    val socket = server.accept()
+                    println("Client connected")
+
+                    val input = socket.getInputStream()
+                    val output = socket.getOutputStream()
+                    val reader = BufferedReader(InputStreamReader(input))
+                    val writer = BufferedWriter(OutputStreamWriter(output))
+                    val line = reader.readLine()
+                    writer.write("HTTP/1.1 200 OK\r\n") //TODO: make this beautiful, maybe with an image
+                    writer.write(
+                        "<!DOCTYPE html>\n" +
+                                "<html lang=\"en\">\n" +
+                                "<head>\n" +
+                                "    <meta charset=\"UTF-8\">\n" +
+                                "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+                                "    <title>My html page</title>\n" +
+                                "</head>\n" +
+                                "<body>\n" +
+                                "\n" +
+                                "    <p>\n" +
+                                "        Thank you for using Intellify.\n" +
+                                "    </p>\n" +
+                                "    \n" +
+                                "    <p>\n" +
+                                "         You can close this, it's useless now :p\n" +
+                                "    </p>\n" +
+                                "    \n" +
+                                "    <p>\n" +
+                                "         KikiManjaro\n" +
+                                "    </p>\n" +
+                                "    \n" +
+                                "</body>\n" +
+                                "</html>"
+                    )
+                    writer.flush()
+                    code = line.split("=")[1].split(" ")[0]
+                    if (code.isNotEmpty()) {
+                        saveCode(code)
+                        getTokensFromCode()
+                        stop = true
+                        // Give browser time to render success page then close
+                        Thread.sleep(2000)
+                        try { socket.close() } catch (_: Exception) {}
+                        try { server.close() } catch (_: Exception) {}
                     }
-                    socket.use { s ->
-                        try {
-                            logger.debug("OAuth client connected")
-                            val reader = BufferedReader(InputStreamReader(s.getInputStream()))
-                            val writer = BufferedWriter(OutputStreamWriter(s.getOutputStream()))
-                            val line = reader.readLine() ?: continue
-                            writer.write("HTTP/1.1 200 OK\r\n")
-                            writer.write("Content-Type: text/html; charset=UTF-8\r\n\r\n")
-                            writer.write(
-                                "<!DOCTYPE html>\n" +
-                                        "<html lang=\"en\">\n" +
-                                        "<head><meta charset=\"UTF-8\"><title>Intellify</title></head>\n" +
-                                        "<body><p>Thank you for using Intellify.</p><p>You can close this tab.</p><p>KikiManjaro</p></body>\n" +
-                                        "</html>"
-                            )
-                            writer.flush()
-                            // Robustly extract code param: ?code=xxx& or ?code=xxx HTTP
-                            val codeParam = line.substringAfter("code=", "").substringBefore("&").substringBefore(" ")
-                            if (codeParam.isNotEmpty()) {
-                                code = codeParam
-                                saveCode(code)
-                                getTokensFromCode()
-                                stop = true
-                            }
-                        } catch (e: Exception) {
-                            logger.warn("OAuth callback handling failed", e)
-                        }
-                    }
-                    if (stop) break
+                } catch (e: java.net.SocketTimeoutException) {
+                    println("OAuth callback timed out")
+                    stop = true
+                    try { server.close() } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    println("Socket error: " + e.message)
+                    stop = true
+                    try { server.close() } catch (_: Exception) {}
                 }
-            } finally {
-                runCatching { server.close() }
             }
         }
     }
@@ -305,14 +317,9 @@ object SpotifyService {
 
     private fun saveAccessToken(token: String) {
         val credentialAttributes: CredentialAttributes? =
-            createCredentialAttributes(accesServiceName, "user") // see previous sample
-        val credentials = Credentials(accesServiceName, token)
+            createCredentialAttributes(accessServiceName, "user") // see previous sample
+        val credentials = Credentials(accessServiceName, token)
         PasswordSafe.instance.set(credentialAttributes!!, credentials)
-    }
-
-    private fun retrieveAccessToken(): String? {
-        val credentialAttributes = createCredentialAttributes(accesServiceName, "user")
-        return PasswordSafe.instance.getPassword(credentialAttributes!!)
     }
 
     private fun saveRefreshToken(token: String) {
@@ -324,6 +331,50 @@ object SpotifyService {
 
     private fun retrieveRefreshToken(): String? {
         val credentialAttributes = createCredentialAttributes(refreshServiceName, "user")
-        return PasswordSafe.instance.getPassword(credentialAttributes!!)
+        // Try new name first, fall back to legacy typo name for migration
+        val token = PasswordSafe.instance.getPassword(credentialAttributes!!)
+        if (token != null) return token
+        val legacyAttributes = createCredentialAttributes(accesServiceName, "user")
+        return PasswordSafe.instance.getPassword(legacyAttributes!!)
+    }
+
+    /** Clears all stored Spotify credentials — used for switching accounts (issue #4). */
+    fun clearCredentials() {
+        for (serviceName in listOf(codeServiceName, accessServiceName, refreshServiceName, accesServiceName)) {
+            try {
+                val attrs = createCredentialAttributes(serviceName, "user")
+                PasswordSafe.instance.set(attrs!!, null)
+            } catch (_: Exception) { }
+        }
+        code = ""
+        spotifyApi.accessToken = null
+        spotifyApi.refreshToken = null
+        title = ""; artist = ""; song = ""; imageUrl = ""
+        durationMs = 0; progressInMs = 0; isPlaying = false
+    }
+
+    fun changeAccount() {
+        clearCredentials()
+        getCodeFromBrowser()
+    }
+
+    private fun retrieveAccessToken(): String? {
+        val credentialAttributes = createCredentialAttributes(accessServiceName, "user")
+        val token = PasswordSafe.instance.getPassword(credentialAttributes!!)
+        if (token != null) return token
+        // Fall back to legacy typo key
+        val legacyAttributes = createCredentialAttributes(accesServiceName, "user")
+        return PasswordSafe.instance.getPassword(legacyAttributes!!)
+    }
+
+    private fun saveAccessTokenCompat(token: String) {
+        saveAccessToken(token)
+        // Also clear legacy entry to avoid confusion
+        try {
+            val legacy = createCredentialAttributes(accesServiceName, "user")
+            if (PasswordSafe.instance.getPassword(legacy!!) != null) {
+                PasswordSafe.instance.set(legacy, Credentials(accessServiceName, token))
+            }
+        } catch (_: Exception) { }
     }
 }

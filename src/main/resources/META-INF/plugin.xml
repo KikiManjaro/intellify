@@ -52,10 +52,13 @@
                 class="com.github.kikimanjaro.intellify.actions.NextTrackAction"
                 text="Intellify Next Track"
                 description="Play the next track"/>
-        <!-- Keep deprecated alias for backwards compatibility with existing keymaps -->
         <action id="nextTackActionID"
                 class="com.github.kikimanjaro.intellify.actions.NextTrackAction"
                 text="Intellify Next Track (deprecated id)"/>
+        <action id="changeAccountActionID"
+                class="com.github.kikimanjaro.intellify.actions.ChangeAccountAction"
+                text="Intellify Change Account"
+                description="Clear stored Spotify credentials and authenticate with a different account"/>
         <group id="SpotifyPlugin.SpotifyGroup" icon="/icons/spotify.svg">
             <add-to-group group-id="NavBarToolBar" anchor="before" relative-to-action="ToolbarRunGroup"/>
         </group>

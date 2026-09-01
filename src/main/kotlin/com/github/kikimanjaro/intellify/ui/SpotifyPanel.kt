@@ -2,7 +2,6 @@ package com.github.kikimanjaro.intellify.ui
 
 import com.github.kikimanjaro.intellify.services.SpotifyService
 import com.github.kikimanjaro.intellify.services.SpotifyStatusUpdater
-import com.intellij.openapi.diagnostic.Logger
 import java.awt.*
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
@@ -11,9 +10,7 @@ import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.plaf.basic.BasicSliderUI
 
-
 class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(BorderLayout()) {
-    private val logger = Logger.getInstance(SpotifyPanel::class.java)
     val customWidth = 200
     val customHeight = 200
 
@@ -30,13 +27,13 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
     private val slider: JSlider
 
     init {
-        val initialImage = loadAlbumImage()
-        imageIcon = ImageIcon(initialImage ?: BufferedImage(customWidth, customHeight, BufferedImage.TYPE_INT_ARGB))
+        val initialImage = loadAndScaleImage(SpotifyService.imageUrl)
+        imageIcon = ImageIcon(initialImage)
         imageLabel = JLabel(imageIcon)
 
-        artistNameLabel = JLabel(SpotifyService.artist, JLabel.CENTER)
-        artistNameLabel.setFont(artistNameLabel.getFont().deriveFont(Font.BOLD, 14f));
-        songNameLabel = JLabel(SpotifyService.song, JLabel.CENTER)
+        artistNameLabel = JLabel(SpotifyService.artist.ifEmpty { "Unknown Artist" }, JLabel.CENTER)
+        artistNameLabel.font = artistNameLabel.font.deriveFont(Font.BOLD, 14f)
+        songNameLabel = JLabel(SpotifyService.song.ifEmpty { "No track" }, JLabel.CENTER)
 
         titlePanel = JPanel(BorderLayout())
         titlePanel.add(artistNameLabel, BorderLayout.NORTH)
@@ -47,17 +44,9 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
         buttonPanel.isOpaque = false
 
         playPauseButton = JButton()
-        if (SpotifyService.isPlaying) {
-            playPauseButton.icon = spotifyStatusUpdater.pauseIcon
-        } else {
-            playPauseButton.icon = spotifyStatusUpdater.playIcon
-        }
+        playPauseButton.icon = if (SpotifyService.isPlaying) spotifyStatusUpdater.pauseIcon else spotifyStatusUpdater.playIcon
         playPauseButton.addActionListener {
-            if (SpotifyService.isPlaying) {
-                SpotifyService.pauseTrack()
-            } else {
-                SpotifyService.startTrack()
-            }
+            if (SpotifyService.isPlaying) SpotifyService.pauseTrack() else SpotifyService.startTrack()
             update()
         }
         prevButton = JButton(spotifyStatusUpdater.prevIcon)
@@ -71,23 +60,23 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
             update()
         }
 
-        slider = object  : JSlider(0, SpotifyService.durationMs.coerceAtLeast(1)){
+        val max = if (SpotifyService.durationMs > 0) SpotifyService.durationMs else 1
+        slider = object : JSlider(0, max) {
             override fun updateUI() {
-                setUI(CustomSliderUI(this));
+                setUI(CustomSliderUI(this))
             }
         }
-        slider.setBorder(BorderFactory.createEmptyBorder(6,0,4,0));
-        slider.value = SpotifyService.progressInMs.coerceIn(0, slider.maximum)
+        slider.border = BorderFactory.createEmptyBorder(6, 0, 4, 0)
+        slider.value = SpotifyService.progressInMs.coerceIn(0, max)
         slider.addMouseListener(object : java.awt.event.MouseAdapter() {
             override fun mouseReleased(e: java.awt.event.MouseEvent) {
                 val newVal = slider.value
                 SpotifyService.setProgress(newVal)
-                slider.value = newVal
                 update()
                 slider.value = newVal
             }
         })
-        // Add the buttons to the button panel
+
         buttonPanel.add(prevButton, BorderLayout.WEST)
         buttonPanel.add(playPauseButton, BorderLayout.CENTER)
         buttonPanel.add(nextButton, BorderLayout.EAST)
@@ -101,34 +90,49 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
         add(bottomPanel, BorderLayout.SOUTH)
     }
 
-    private fun loadAlbumImage(): Image? {
-        if (SpotifyService.imageUrl.isBlank()) return null
-        return runCatching {
-            val image: BufferedImage = ImageIO.read(URL(SpotifyService.imageUrl)) ?: return null
-            image.getScaledInstance(customWidth, customHeight, Image.SCALE_SMOOTH)
-        }.onFailure { e ->
-            logger.warn("Failed to load album image: ${SpotifyService.imageUrl}", e)
-        }.getOrNull()
-    }
-
     fun update() {
-        artistNameLabel.text = SpotifyService.artist
-        songNameLabel.text = SpotifyService.song
+        artistNameLabel.text = SpotifyService.artist.ifEmpty { "Unknown Artist" }
+        songNameLabel.text = SpotifyService.song.ifEmpty { "No track" }
         titlePanel.repaint()
 
-        loadAlbumImage()?.let { scaledImage ->
-            imageIcon.image = scaledImage
+        val scaled = loadAndScaleImage(SpotifyService.imageUrl)
+        if (scaled != null) {
+            imageIcon.image = scaled
             imageLabel.repaint()
         }
 
-        if (SpotifyService.isPlaying) {
-            playPauseButton.icon = spotifyStatusUpdater.pauseIcon
-        } else {
-            playPauseButton.icon = spotifyStatusUpdater.playIcon
-        }
+        playPauseButton.icon = if (SpotifyService.isPlaying) spotifyStatusUpdater.pauseIcon else spotifyStatusUpdater.playIcon
 
-        slider.maximum = SpotifyService.durationMs.coerceAtLeast(1)
-        slider.value = SpotifyService.progressInMs.coerceIn(0, slider.maximum)
+        val max = if (SpotifyService.durationMs > 0) SpotifyService.durationMs else 1
+        // Keep slider max in sync with track duration
+        if (slider.maximum != max) slider.maximum = max
+        slider.value = SpotifyService.progressInMs.coerceIn(0, max)
+    }
+
+    private fun loadAndScaleImage(url: String): Image? {
+        if (url.isBlank()) return createPlaceholderImage()
+        return try {
+            val image: BufferedImage = ImageIO.read(URL(url)) ?: return createPlaceholderImage()
+            image.getScaledInstance(customWidth, customHeight, Image.SCALE_SMOOTH)
+        } catch (e: Exception) {
+            createPlaceholderImage()
+        }
+    }
+
+    private fun createPlaceholderImage(): Image {
+        val img = BufferedImage(customWidth, customHeight, BufferedImage.TYPE_INT_RGB)
+        val g = img.createGraphics()
+        g.color = Color(40, 40, 40)
+        g.fillRect(0, 0, customWidth, customHeight)
+        g.color = Color(29, 184, 84)
+        g.font = g.font.deriveFont(Font.BOLD, 48f)
+        val text = "♪"
+        val fm = g.fontMetrics
+        val x = (customWidth - fm.stringWidth(text)) / 2
+        val y = (customHeight + fm.ascent) / 2 - 10
+        g.drawString(text, x, y)
+        g.dispose()
+        return img
     }
 }
 
@@ -162,12 +166,10 @@ private class CustomSliderUI(b: JSlider?) : BasicSliderUI(b) {
         }
     }
 
-    override fun getThumbSize(): Dimension {
-        return THUMB_SIZE
-    }
+    override fun getThumbSize(): Dimension = THUMB_SIZE
 
     private val isHorizontal: Boolean
-        private get() = slider.orientation == JSlider.HORIZONTAL
+        get() = slider.orientation == JSlider.HORIZONTAL
 
     override fun paint(g: Graphics, c: JComponent) {
         (g as Graphics2D).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
@@ -180,11 +182,9 @@ private class CustomSliderUI(b: JSlider?) : BasicSliderUI(b) {
         val horizontal = isHorizontal
         var inverted = slider.inverted
 
-        // Paint shadow.
         g2.color = Color(170, 170, 170)
         g2.fill(trackShape)
 
-        // Paint track background.
         g2.color = Color(200, 200, 200)
         g2.clip = trackShape
         trackShape.y += 1f
@@ -192,32 +192,25 @@ private class CustomSliderUI(b: JSlider?) : BasicSliderUI(b) {
         trackShape.y = trackRect.y.toFloat()
         g2.clip = clip
 
-        // Paint selected track.
         if (horizontal) {
             val ltr = slider.componentOrientation.isLeftToRight
             if (ltr) inverted = !inverted
             val thumbPos = thumbRect.x + thumbRect.width / 2
-            if (inverted) {
-                g2.clipRect(0, 0, thumbPos, slider.height)
-            } else {
-                g2.clipRect(thumbPos, 0, slider.width - thumbPos, slider.height)
-            }
+            if (inverted) g2.clipRect(0, 0, thumbPos, slider.height)
+            else g2.clipRect(thumbPos, 0, slider.width - thumbPos, slider.height)
         } else {
             val thumbPos = thumbRect.y + thumbRect.height / 2
-            if (inverted) {
-                g2.clipRect(0, 0, slider.height, thumbPos)
-            } else {
-                g2.clipRect(0, thumbPos, slider.width, slider.height - thumbPos)
-            }
+            if (inverted) g2.clipRect(0, 0, slider.height, thumbPos)
+            else g2.clipRect(0, thumbPos, slider.width, slider.height - thumbPos)
         }
-        g2.color = Color(29,184,84)
+        g2.color = Color(29, 184, 84)
         g2.fill(trackShape)
         g2.clip = clip
     }
 
     override fun paintThumb(g: Graphics) {
         g.color = Color.WHITE
-        g.fillOval(thumbRect.x + thumbRect.width / 4, thumbRect.y + thumbRect.height / 4 , thumbRect.width /2, thumbRect.height /2)
+        g.fillOval(thumbRect.x + thumbRect.width / 4, thumbRect.y + thumbRect.height / 4, thumbRect.width / 2, thumbRect.height / 2)
     }
 
     override fun paintFocus(g: Graphics) {}

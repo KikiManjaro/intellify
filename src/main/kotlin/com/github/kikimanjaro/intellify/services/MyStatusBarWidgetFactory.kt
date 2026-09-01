@@ -1,36 +1,31 @@
 package com.github.kikimanjaro.intellify.services
 
-import com.intellij.openapi.diagnostic.Logger
+import com.github.kikimanjaro.intellify.ui.SpotifyPanel
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.ui.popup.ListPopup
+import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidgetFactory
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.Consumer
-import java.awt.*
 import java.awt.event.MouseEvent
-import javax.swing.*
-
+import javax.swing.Icon
 
 class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
-    private val logger = Logger.getInstance(MyStatusBarWidgetFactory::class.java)
     private var statusUpdaterThread: Thread? = null
     private var spotifyStatusUpdater: SpotifyStatusUpdater? = null
     private lateinit var intellifyWidget: StatusBarWidget
     private val name = "Intellify"
 
-    override fun getId(): String {
-        return name
-    }
+    override fun getId(): String = name
 
-    override fun getDisplayName(): String {
-        return name
-    }
+    override fun getDisplayName(): String = name
 
-    override fun isAvailable(project: com.intellij.openapi.project.Project): Boolean {
-        return true
-    }
+    override fun isAvailable(project: Project): Boolean = true
 
-    override fun createWidget(project: com.intellij.openapi.project.Project): StatusBarWidget {
+    override fun createWidget(project: Project): StatusBarWidget {
         intellifyWidget = object : StatusBarWidget {
 
             override fun dispose() {
@@ -38,67 +33,72 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                 statusUpdaterThread?.interrupt()
             }
 
-            override fun ID(): String {
-                return name
-            }
+            override fun ID(): String = name
 
             override fun install(statusBar: StatusBar) {
                 spotifyStatusUpdater = SpotifyStatusUpdater(statusBar)
-                statusUpdaterThread = Thread(spotifyStatusUpdater).apply {
-                    isDaemon = true
-                    name = "Intellify-Spotify-Updater"
-                    start()
-                }
+                statusUpdaterThread = Thread(spotifyStatusUpdater, "Intellify-SpotifyStatusUpdater")
+                statusUpdaterThread!!.isDaemon = true
+                statusUpdaterThread!!.start()
             }
 
-            override fun getPresentation(): StatusBarWidget.WidgetPresentation? {
+            override fun getPresentation(): StatusBarWidget.WidgetPresentation {
                 return object : StatusBarWidget.MultipleTextValuesPresentation {
-                    override fun getTooltipText(): String? {
-                        return "Intellify"
-                    }
+                    override fun getTooltipText(): String = "Intellify - Click to open Spotify controls"
 
                     override fun getClickConsumer(): Consumer<MouseEvent>? {
-                        return Consumer {
-                            SpotifyService.getCodeFromBrowser()
+                        return Consumer { event ->
+                            showPopup(event, statusBar)
                         }
                     }
 
-                    override fun getPopupStep(): com.intellij.openapi.ui.popup.ListPopup? {
-                        return runCatching {
-                            val spotifyPanel = SpotifyPanel(spotifyStatusUpdater ?: return@runCatching null)
-                                ?: return@runCatching null
+                    override fun getPopupStep(): ListPopup? {
+                        // Popup is shown via clickConsumer to get MouseEvent for correct anchoring.
+                        // Returning null here avoids the default ListPopup handling.
+                        return null
+                    }
+
+                    private fun showPopup(event: MouseEvent?, statusBar: StatusBar?) {
+                        kotlin.runCatching {
+                            val updater = spotifyStatusUpdater ?: return@runCatching
+                            // If not authenticated, trigger OAuth flow instead of empty popup
+                            if (SpotifyService.code.isEmpty()) {
+                                SpotifyService.getCodeFromBrowser()
+                                return@runCatching
+                            }
+                            val spotifyPanel = SpotifyPanel(updater)
                             SpotifyService.currentPanel = spotifyPanel
-                            val popup =
-                                com.intellij.openapi.ui.popup.JBPopupFactory.getInstance().createComponentPopupBuilder(spotifyPanel, spotifyPanel)
-                                    .setRequestFocus(true)
-                                    .setCancelOnClickOutside(true)
-                                    .createPopup()
-                            val mouseX = MouseInfo.getPointerInfo().location.getX()
-                            val mouseY = MouseInfo.getPointerInfo().location.getY()
-                            popup.show(RelativePoint(Point(mouseX.toInt(), mouseY.toInt())))
-                            popup.setLocation(
-                                Point(
-                                    (mouseX - spotifyPanel.width / 2).toInt(),
-                                    (mouseY - spotifyPanel.height * 1.05).toInt()
-                                )
-                            )
+                            val popup = JBPopupFactory.getInstance()
+                                .createComponentPopupBuilder(spotifyPanel, spotifyPanel)
+                                .setRequestFocus(true)
+                                .setCancelOnClickOutside(true)
+                                .setMovable(true)
+                                .setResizable(false)
+                                .setTitle("Intellify")
+                                .createPopup()
+
+                            // Anchor to the status bar widget / mouse event — fixes #1 (New UI out-of-bounds)
+                            val relativePoint = when {
+                                event != null -> RelativePoint(event)
+                                statusBar?.component != null -> RelativePoint.getCenterOf(statusBar.component)
+                                else -> RelativePoint.getCenterOf(spotifyPanel)
+                            }
+                            popup.show(relativePoint)
                         }.onFailure { e ->
-                            logger.warn("Failed to show Intellify popup", e)
-                        }.getOrNull()
+                            e.printStackTrace()
+                        }
                     }
 
                     override fun getSelectedValue(): String? {
-                        return SpotifyService.title.isNotEmpty().let {
-                            if (it) {
-                                " " + SpotifyService.title
-                            } else {
-                                " No song playing"
-                            }
+                        return if (SpotifyService.title.isNotEmpty()) {
+                            " " + SpotifyService.title
+                        } else {
+                            " No song playing"
                         }
                     }
 
-                    override fun getIcon(): Icon? {
-                        return spotifyStatusUpdater?.currentIcon ?: com.intellij.openapi.util.IconLoader.getIcon(
+                    override fun getIcon(): Icon {
+                        return spotifyStatusUpdater?.currentIcon ?: IconLoader.getIcon(
                             "/icons/spotify-inactive.svg",
                             this::class.java
                         )
@@ -112,11 +112,7 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     override fun disposeWidget(widget: StatusBarWidget) {
         spotifyStatusUpdater?.stop()
         statusUpdaterThread?.interrupt()
-        spotifyStatusUpdater = null
-        statusUpdaterThread = null
     }
 
-    override fun canBeEnabledOn(statusBar: StatusBar): Boolean {
-        return true
-    }
+    override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
 }
