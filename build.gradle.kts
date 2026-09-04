@@ -29,7 +29,7 @@ dependencies {
     api("se.michaelthelin.spotify:spotify-web-api-java:9.4.0") {
         exclude(group = "org.slf4j", module = "slf4j-api")
     }
-    compileOnly("org.slf4j:slf4j-api:1.7.36")
+    compileOnly("org.slf4j:slf4j-api:2.0.18")
 }
 
 //configurations {
