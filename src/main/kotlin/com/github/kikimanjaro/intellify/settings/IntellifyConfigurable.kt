@@ -24,6 +24,7 @@ class IntellifyConfigurable : Configurable {
 
     private var rootPanel: JPanel? = null
     private val providerCombo = JComboBox<MusicProvider>()
+    private val playerctlPlayerField = JBTextField()
     private val clientIdField = JBTextField()
     private val clientSecretField = JBPasswordField()
     private val statusLabel = JBLabel()
@@ -57,6 +58,14 @@ class IntellifyConfigurable : Configurable {
                 .addLabeledComponent("Music provider:", providerCombo)
                 .addComponent(statusLabel)
                 .addSeparator()
+                .addLabeledComponent("playerctl player:", playerctlPlayerField)
+                .addComponent(
+                    JBLabel(
+                        "<html>Only used by the playerctl provider on Linux; leave empty to use the " +
+                            "first player reported by <b>playerctl --list-all</b>.</html>"
+                    )
+                )
+                .addSeparator()
                 .addLabeledComponent("Spotify client ID:", clientIdField)
                 .addLabeledComponent("Spotify client secret:", clientSecretField)
                 .addComponent(
@@ -79,6 +88,7 @@ class IntellifyConfigurable : Configurable {
     override fun isModified(): Boolean {
         val state = IntellifySettings.getInstance()?.state ?: return false
         return (providerCombo.selectedItem as? MusicProvider)?.id.orEmpty() != state.providerId ||
+            playerctlPlayerField.text.trim() != state.playerctlPlayer ||
             clientIdField.text.trim() != state.spotifyClientId ||
             String(clientSecretField.password) != state.spotifyClientSecret
     }
@@ -86,6 +96,7 @@ class IntellifyConfigurable : Configurable {
     override fun apply() {
         val settings = IntellifySettings.getInstance() ?: return
         settings.state.providerId = (providerCombo.selectedItem as? MusicProvider)?.id.orEmpty()
+        settings.state.playerctlPlayer = playerctlPlayerField.text.trim()
         settings.state.spotifyClientId = clientIdField.text.trim()
         settings.state.spotifyClientSecret = String(clientSecretField.password)
         updateStatus()
@@ -96,6 +107,7 @@ class IntellifyConfigurable : Configurable {
         MusicProviderRegistry.all().forEach { providerCombo.addItem(it) }
         val state = IntellifySettings.getInstance()?.state
         providerCombo.selectedItem = MusicProviderRegistry.byId(state?.providerId) ?: MusicProviderRegistry.active()
+        playerctlPlayerField.text = state?.playerctlPlayer.orEmpty()
         clientIdField.text = state?.spotifyClientId.orEmpty()
         clientSecretField.text = state?.spotifyClientSecret.orEmpty()
         updateStatus()
