@@ -1,8 +1,5 @@
 package com.github.kikimanjaro.intellify.services
 
-import com.github.kikimanjaro.intellify.services.Secret.Companion.clientId
-import com.github.kikimanjaro.intellify.services.Secret.Companion.clientSecret
-import com.github.kikimanjaro.intellify.ui.SpotifyPanel
 import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
@@ -24,8 +21,15 @@ import java.util.concurrent.CompletionException
 import kotlin.concurrent.thread
 
 
+/**
+ * Spotify Web API client: OAuth flow, token store and the Web API calls.
+ *
+ * It is a plain client since the multi-provider refactor: the UI and the actions go through
+ * [com.github.kikimanjaro.intellify.provider.MusicProviderRegistry] and
+ * [com.github.kikimanjaro.intellify.provider.spotify.SpotifyProvider] adapts this class to the
+ * provider SPI. Nothing else should call it directly.
+ */
 object SpotifyService {
-    var currentPanel: SpotifyPanel? = null
     private const val codeServiceName = "Intellify-code"
     private const val accessServiceName = "Intellify-access"
     @Deprecated("Typo alias, kept for migration")
@@ -33,27 +37,56 @@ object SpotifyService {
     private const val refreshServiceName = "Intellify-refresh"
     private val redirectUri =
         SpotifyHttpManager.makeUri("http://localhost:30498/callback")
-    private val spotifyApi = SpotifyApi.Builder()
-        .setClientId(clientId)
-        .setClientSecret(clientSecret)
-        .setRedirectUri(redirectUri)
-        .setAccessToken(retrieveAccessToken())
-        .setRefreshToken(retrieveRefreshToken())
-        .build()
 
-    private val authorizationCodeUriRqst = AuthorizationCodeUriRequest.Builder().client_id(clientId)
-        .redirect_uri(SpotifyHttpManager.makeUri("http://localhost:30498/callback")).show_dialog(true)
-        .response_type("code").scope(
-            AuthorizationScope.USER_LIBRARY_READ,
-            AuthorizationScope.APP_REMOTE_CONTROL,
-            AuthorizationScope.USER_READ_CURRENTLY_PLAYING,
-            AuthorizationScope.USER_MODIFY_PLAYBACK_STATE,
-            AuthorizationScope.USER_TOP_READ
-        ).build()
+    /** Whether both Spotify client credentials are available (settings or environment variables). */
+    val isConfigured: Boolean
+        get() = SpotifyCredentials.isConfigured
+
+    /** Human readable explanation of what is missing while [isConfigured] is false, `null` otherwise. */
+    val configurationProblem: String?
+        get() = SpotifyCredentials.configurationProblem
+
+    /**
+     * The Web API client, built on first use. It is `null` while no client id/secret is configured:
+     * every method below then degrades to a no-op instead of throwing, so an unconfigured plugin
+     * shows a clear message instead of breaking the IDE.
+     */
+    private val spotifyApi: SpotifyApi? by lazy {
+        val id = SpotifyCredentials.clientId
+        val secret = SpotifyCredentials.clientSecret
+        if (id == null || secret == null) {
+            null
+        } else {
+            runCatching {
+                SpotifyApi.Builder()
+                    .setClientId(id)
+                    .setClientSecret(secret)
+                    .setRedirectUri(redirectUri)
+                    .setAccessToken(retrieveAccessToken())
+                    .setRefreshToken(retrieveRefreshToken())
+                    .build()
+            }.onFailure {
+                println("Intellify: could not initialise the Spotify client: " + it.message)
+            }.getOrNull()
+        }
+    }
+
+    private val authorizationCodeUriRqst by lazy {
+        AuthorizationCodeUriRequest.Builder().client_id(SpotifyCredentials.clientId ?: "")
+            .redirect_uri(redirectUri).show_dialog(true)
+            .response_type("code").scope(
+                AuthorizationScope.USER_LIBRARY_READ,
+                AuthorizationScope.APP_REMOTE_CONTROL,
+                AuthorizationScope.USER_READ_CURRENTLY_PLAYING,
+                AuthorizationScope.USER_MODIFY_PLAYBACK_STATE,
+                AuthorizationScope.USER_TOP_READ
+            ).build()
+    }
     var code = retrieveCode()
     var title = ""
     var artist = ""
     var song = ""
+    var album = ""
     var imageUrl = ""
 
     var durationMs = 0
@@ -62,9 +95,10 @@ object SpotifyService {
     var isPlaying = false
 
     fun refreshAccessTokenWithRefreshToken() {
+        val api = spotifyApi ?: return
         try {
-            if (spotifyApi.refreshToken != null && spotifyApi.refreshToken.isNotEmpty()) {
-                val authorizationCodeRefreshRequest = spotifyApi.authorizationCodeRefresh().build()
+            if (api.refreshToken != null && api.refreshToken.isNotEmpty()) {
+                val authorizationCodeRefreshRequest = api.authorizationCodeRefresh().build()
                 val authorizationCodeCredentialsFuture = authorizationCodeRefreshRequest.executeAsync()
 
                 // Thread free to do other tasks...
@@ -73,10 +107,10 @@ object SpotifyService {
                 val authorizationCodeCredentials = authorizationCodeCredentialsFuture.join()
 
                 // Set access token for further "spotifyApi" object usage
-                spotifyApi.accessToken = authorizationCodeCredentials.accessToken
+                api.accessToken = authorizationCodeCredentials.accessToken
                 saveAccessToken(authorizationCodeCredentials.accessToken)
                 println("Expires in: " + authorizationCodeCredentials.expiresIn)
-            } else if (spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
+            } else if (api.accessToken != null && api.accessToken.isNotEmpty()) {
                 getTokensFromCode()
             } else {
                 getCodeFromBrowser()
@@ -92,14 +126,15 @@ object SpotifyService {
     }
 
     fun getTokensFromCode() {
+        val api = spotifyApi ?: return
         try {
             if (code.isNotEmpty()) {
-                val authorizationCodeCredentialsFuture = spotifyApi.authorizationCode(code).build().executeAsync()
+                val authorizationCodeCredentialsFuture = api.authorizationCode(code).build().executeAsync()
                 val authorizationCodeCredentials = authorizationCodeCredentialsFuture.join()
 
-                spotifyApi.accessToken = authorizationCodeCredentials.accessToken
+                api.accessToken = authorizationCodeCredentials.accessToken
                 saveAccessToken(authorizationCodeCredentials.accessToken)
-                spotifyApi.refreshToken = authorizationCodeCredentials.refreshToken
+                api.refreshToken = authorizationCodeCredentials.refreshToken
                 saveRefreshToken(authorizationCodeCredentials.refreshToken)
 //                println("Expires in: " + authorizationCodeCredentials.expiresIn)
             } else {
@@ -116,6 +151,7 @@ object SpotifyService {
     }
 
     fun getCodeFromBrowser() {
+        if (!isConfigured) return
         try {
             val uriFuture = authorizationCodeUriRqst.executeAsync()
 
@@ -133,14 +169,16 @@ object SpotifyService {
     }
 
     fun getInformationAboutUsersCurrentPlayingTrack() {
+        val api = spotifyApi ?: return
         try {
-            if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                val currentlyPlayingContext = spotifyApi.usersCurrentlyPlayingTrack.build().execute()
+            if (code.isNotEmpty() && api.accessToken != null && api.accessToken.isNotEmpty()) {
+                val currentlyPlayingContext = api.usersCurrentlyPlayingTrack.build().execute()
                 if (currentlyPlayingContext.item is Track) {
                     isPlaying = currentlyPlayingContext.is_playing
                     val track = currentlyPlayingContext.item as Track
                     song = track.name
                     artist = track.artists[0].name
+                    album = track.album?.name ?: ""
                     title = track.name
                     title += " - " + track.artists[0].name
                     durationMs = track.durationMs
@@ -168,9 +206,10 @@ object SpotifyService {
     }
 
     fun pauseTrack() {
+        val api = spotifyApi ?: return
         try {
-            if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.pauseUsersPlayback().build().execute()
+            if (code.isNotEmpty() && api.accessToken != null && api.accessToken.isNotEmpty()) {
+                api.pauseUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -182,9 +221,10 @@ object SpotifyService {
     }
 
     fun startTrack() {
+        val api = spotifyApi ?: return
         try {
-            if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.startResumeUsersPlayback().build().execute()
+            if (code.isNotEmpty() && api.accessToken != null && api.accessToken.isNotEmpty()) {
+                api.startResumeUsersPlayback().build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -196,9 +236,10 @@ object SpotifyService {
     }
 
     fun nextTrack() {
+        val api = spotifyApi ?: return
         try {
-            if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.skipUsersPlaybackToNextTrack().build().execute()
+            if (code.isNotEmpty() && api.accessToken != null && api.accessToken.isNotEmpty()) {
+                api.skipUsersPlaybackToNextTrack().build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -210,9 +251,10 @@ object SpotifyService {
     }
 
     fun prevTrack() {
+        val api = spotifyApi ?: return
         try {
-            if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.skipUsersPlaybackToPreviousTrack().build().execute()
+            if (code.isNotEmpty() && api.accessToken != null && api.accessToken.isNotEmpty()) {
+                api.skipUsersPlaybackToPreviousTrack().build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -224,9 +266,10 @@ object SpotifyService {
     }
 
     fun setProgress(progressInMsToGoTo: Int) {
+        val api = spotifyApi ?: return
         try {
-            if (code.isNotEmpty() && spotifyApi.accessToken != null && spotifyApi.accessToken.isNotEmpty()) {
-                spotifyApi.seekToPositionInCurrentlyPlayingTrack(progressInMsToGoTo).build().execute()
+            if (code.isNotEmpty() && api.accessToken != null && api.accessToken.isNotEmpty()) {
+                api.seekToPositionInCurrentlyPlayingTrack(progressInMsToGoTo).build().execute()
             }
         } catch (e: CompletionException) {
             println("Error: " + e.cause!!.message)
@@ -347,9 +390,9 @@ object SpotifyService {
             } catch (_: Exception) { }
         }
         code = ""
-        spotifyApi.accessToken = null
-        spotifyApi.refreshToken = null
-        title = ""; artist = ""; song = ""; imageUrl = ""
+        spotifyApi?.accessToken = null
+        spotifyApi?.refreshToken = null
+        title = ""; artist = ""; song = ""; album = ""; imageUrl = ""
         durationMs = 0; progressInMs = 0; isPlaying = false
     }
 

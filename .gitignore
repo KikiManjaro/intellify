@@ -2,6 +2,7 @@
 .idea
 .qodana
 build
+# Local Spotify credentials (no longer needed by the code, kept ignored on purpose)
 Secret.kt
 out
 *.iml

@@ -1,6 +1,11 @@
 package com.github.kikimanjaro.intellify.services
 
-import com.github.kikimanjaro.intellify.ui.SpotifyPanel
+import com.github.kikimanjaro.intellify.provider.MusicProvider
+import com.github.kikimanjaro.intellify.provider.MusicProviderRegistry
+import com.github.kikimanjaro.intellify.ui.ProviderPanel
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.ListPopup
@@ -20,9 +25,17 @@ import javax.swing.Icon
 
 class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     private var statusUpdaterThread: Thread? = null
-    private var spotifyStatusUpdater: SpotifyStatusUpdater? = null
+    private var statusUpdater: ProviderStatusUpdater? = null
     private lateinit var intellifyWidget: StatusBarWidget
     private val name = "Intellify"
+
+    /**
+     * The status bar passed to [StatusBarWidget.install]. The presentation returned by
+     * [StatusBarWidget.getPresentation] is a nested anonymous object, so the `statusBar`
+     * parameter of `install()` is not in scope there: it is captured here instead.
+     */
+    @Volatile
+    private var installedStatusBar: StatusBar? = null
 
     override fun getId(): String = name
 
@@ -34,15 +47,16 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
         intellifyWidget = object : StatusBarWidget {
 
             override fun dispose() {
-                spotifyStatusUpdater?.stop()
+                statusUpdater?.stop()
                 statusUpdaterThread?.interrupt()
             }
 
             override fun ID(): String = name
 
             override fun install(statusBar: StatusBar) {
-                spotifyStatusUpdater = SpotifyStatusUpdater(statusBar)
-                statusUpdaterThread = Thread(spotifyStatusUpdater, "Intellify-SpotifyStatusUpdater").apply {
+                installedStatusBar = statusBar
+                statusUpdater = ProviderStatusUpdater(statusBar)
+                statusUpdaterThread = Thread(statusUpdater, "Intellify-StatusUpdater").apply {
                     isDaemon = true
                     start()
                 }
@@ -50,11 +64,18 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
 
             override fun getPresentation(): StatusBarWidget.WidgetPresentation {
                 return object : StatusBarWidget.MultipleTextValuesPresentation {
-                    override fun getTooltipText(): String = "Intellify - Click to open Spotify controls"
+                    override fun getTooltipText(): String {
+                        val provider = MusicProviderRegistry.active()
+                        return if (provider.isConfigured()) {
+                            "Intellify - Click to open ${provider.displayName} controls"
+                        } else {
+                            provider.describeStatus()
+                        }
+                    }
 
                     override fun getClickConsumer(): Consumer<MouseEvent>? {
                         return Consumer { event ->
-                            showPopup(event, statusBar)
+                            showPopup(event, installedStatusBar)
                         }
                     }
 
@@ -71,21 +92,22 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                      */
                     private fun showPopup(event: MouseEvent?, statusBar: StatusBar?) {
                         kotlin.runCatching {
-                            val updater = spotifyStatusUpdater ?: return@runCatching
-                            if (SpotifyService.code.isEmpty()) {
-                                SpotifyService.getCodeFromBrowser()
+                            val updater = statusUpdater ?: return@runCatching
+                            val provider = MusicProviderRegistry.active()
+                            if (!provider.isConfigured()) {
+                                showNotConfiguredNotification(provider)
                                 return@runCatching
                             }
-                            val spotifyPanel = SpotifyPanel(updater)
-                            SpotifyService.currentPanel = spotifyPanel
+                            val providerPanel = ProviderPanel(updater)
+                            updater.panel = providerPanel
 
                             // HiDPI-aware preferred size via JBUI.scale
-                            val scaledWidth = JBUI.scale(spotifyPanel.customWidth.coerceAtLeast(200))
-                            val scaledHeight = JBUI.scale(spotifyPanel.customHeight.coerceAtLeast(200))
-                            spotifyPanel.preferredSize = Dimension(scaledWidth, scaledHeight + JBUI.scale(80))
+                            val scaledWidth = JBUI.scale(providerPanel.customWidth.coerceAtLeast(200))
+                            val scaledHeight = JBUI.scale(providerPanel.customHeight.coerceAtLeast(200))
+                            providerPanel.preferredSize = Dimension(scaledWidth, scaledHeight + JBUI.scale(80))
 
                             val popup = JBPopupFactory.getInstance()
-                                .createComponentPopupBuilder(spotifyPanel, spotifyPanel)
+                                .createComponentPopupBuilder(providerPanel, providerPanel)
                                 .setRequestFocus(true)
                                 .setCancelOnClickOutside(true)
                                 .setMovable(true)
@@ -102,21 +124,31 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                                     val gap = JBUI.scale(8)
                                     val x = compLocation.x + compSize.width / 2
                                     val y = compLocation.y - gap
-                                    val popupSize = spotifyPanel.preferredSize
+                                    val popupSize = providerPanel.preferredSize
                                     val clamped = clampToScreen(Point(x - popupSize.width / 2, y - popupSize.height), popupSize)
                                     RelativePoint(clamped)
                                 }
                                 event != null -> {
-                                    val popupSize = spotifyPanel.preferredSize
+                                    val popupSize = providerPanel.preferredSize
                                     val raw = Point(event.locationOnScreen.x - popupSize.width / 2, event.locationOnScreen.y - popupSize.height - JBUI.scale(8))
                                     RelativePoint(clampToScreen(raw, popupSize))
                                 }
-                                else -> RelativePoint.getCenterOf(spotifyPanel)
+                                else -> RelativePoint.getCenterOf(providerPanel)
                             }
 
                             popup.show(anchorPoint)
                         }.onFailure { e ->
                             e.printStackTrace()
+                        }
+                    }
+
+                    /** Explains how to configure the active provider instead of failing silently. */
+                    private fun showNotConfiguredNotification(provider: MusicProvider) {
+                        val message = provider.describeStatus()
+                        runCatching {
+                            Notifications.Bus.notify(
+                                Notification("Intellify", "Intellify", message, NotificationType.WARNING)
+                            )
                         }
                     }
 
@@ -144,15 +176,17 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                     }
 
                     override fun getSelectedValue(): String? {
-                        return if (SpotifyService.title.isNotEmpty()) {
-                            " " + SpotifyService.title
-                        } else {
-                            " No song playing"
+                        val provider = MusicProviderRegistry.active()
+                        val track = MusicProviderRegistry.currentTrack
+                        return when {
+                            !provider.isConfigured() -> " Intellify: ${provider.displayName} is not configured"
+                            track != null -> " " + track.displayLabel
+                            else -> " No song playing"
                         }
                     }
 
                     override fun getIcon(): Icon {
-                        return spotifyStatusUpdater?.currentIcon ?: IconLoader.getIcon(
+                        return statusUpdater?.currentIcon ?: IconLoader.getIcon(
                             "/icons/spotify-inactive.svg",
                             this::class.java
                         )
@@ -164,7 +198,7 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     }
 
     override fun disposeWidget(widget: StatusBarWidget) {
-        spotifyStatusUpdater?.stop()
+        statusUpdater?.stop()
         statusUpdaterThread?.interrupt()
     }
 

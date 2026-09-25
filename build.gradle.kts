@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.net.URI
 
 fun properties(key: String) = project.findProperty(key).toString()
@@ -69,9 +69,6 @@ tasks {
             sourceCompatibility = it
             targetCompatibility = it
         }
-        withType<KotlinCompile> {
-            kotlinOptions.jvmTarget = it
-        }
     }
 
     wrapper {
@@ -135,11 +132,10 @@ tasks.withType<Jar>() {
         from(zipTree(file.absoluteFile))
     }
 }
-val compileKotlin: KotlinCompile by tasks
-compileKotlin.kotlinOptions {
-    jvmTarget = properties("javaVersion").toString()
-}
-val compileTestKotlin: KotlinCompile by tasks
-compileTestKotlin.kotlinOptions {
-    jvmTarget = properties("javaVersion").toString()
+kotlin {
+    // Kotlin Gradle Plugin 2.x removed the `kotlinOptions` DSL: jvmTarget is now set
+    // through the compilerOptions DSL. Keep it in sync with the `javaVersion` property.
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+    }
 }

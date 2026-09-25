@@ -1,7 +1,8 @@
 package com.github.kikimanjaro.intellify.ui
 
-import com.github.kikimanjaro.intellify.services.SpotifyService
-import com.github.kikimanjaro.intellify.services.SpotifyStatusUpdater
+import com.github.kikimanjaro.intellify.provider.MusicProviderRegistry
+import com.github.kikimanjaro.intellify.provider.ProviderCapability
+import com.github.kikimanjaro.intellify.services.ProviderStatusUpdater
 import java.awt.*
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
@@ -10,7 +11,14 @@ import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.plaf.basic.BasicSliderUI
 
-class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(BorderLayout()) {
+/**
+ * Popup panel: artist/song labels, album cover, seekable progress bar and Prev / Play-Pause / Next.
+ *
+ * It is provider-agnostic: everything comes from the active provider through [MusicProviderRegistry],
+ * and the controls a provider does not support (see [ProviderCapability]) are hidden instead of being
+ * displayed but dead.
+ */
+class ProviderPanel(private val statusUpdater: ProviderStatusUpdater) : JPanel(BorderLayout()) {
     val customWidth = 200
     val customHeight = 200
 
@@ -27,13 +35,13 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
     private val slider: JSlider
 
     init {
-        val initialImage = loadAndScaleImage(SpotifyService.imageUrl)
-        imageIcon = ImageIcon(initialImage)
+        val initialTrack = MusicProviderRegistry.currentTrack
+        imageIcon = ImageIcon(loadAndScaleImage(initialTrack?.artworkUrl))
         imageLabel = JLabel(imageIcon)
 
-        artistNameLabel = JLabel(SpotifyService.artist.ifEmpty { "Unknown Artist" }, JLabel.CENTER)
+        artistNameLabel = JLabel(initialTrack?.artist?.ifBlank { null } ?: "Unknown Artist", JLabel.CENTER)
         artistNameLabel.font = artistNameLabel.font.deriveFont(Font.BOLD, 14f)
-        songNameLabel = JLabel(SpotifyService.song.ifEmpty { "No track" }, JLabel.CENTER)
+        songNameLabel = JLabel(initialTrack?.title?.ifBlank { null } ?: "No track", JLabel.CENTER)
 
         titlePanel = JPanel(BorderLayout())
         titlePanel.add(artistNameLabel, BorderLayout.NORTH)
@@ -44,34 +52,34 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
         buttonPanel.isOpaque = false
 
         playPauseButton = JButton()
-        playPauseButton.icon = if (SpotifyService.isPlaying) spotifyStatusUpdater.pauseIcon else spotifyStatusUpdater.playIcon
+        playPauseButton.icon = if (initialTrack?.isPlaying == true) statusUpdater.pauseIcon else statusUpdater.playIcon
         playPauseButton.addActionListener {
-            if (SpotifyService.isPlaying) SpotifyService.pauseTrack() else SpotifyService.startTrack()
+            MusicProviderRegistry.active().playPause()
             update()
         }
-        prevButton = JButton(spotifyStatusUpdater.prevIcon)
+        prevButton = JButton(statusUpdater.prevIcon)
         prevButton.addActionListener {
-            SpotifyService.prevTrack()
+            MusicProviderRegistry.active().previous()
             update()
         }
-        nextButton = JButton(spotifyStatusUpdater.nextIcon)
+        nextButton = JButton(statusUpdater.nextIcon)
         nextButton.addActionListener {
-            SpotifyService.nextTrack()
+            MusicProviderRegistry.active().next()
             update()
         }
 
-        val max = if (SpotifyService.durationMs > 0) SpotifyService.durationMs else 1
+        val max = sliderMaximum(initialTrack?.durationMs)
         slider = object : JSlider(0, max) {
             override fun updateUI() {
                 setUI(CustomSliderUI(this))
             }
         }
         slider.border = BorderFactory.createEmptyBorder(6, 0, 4, 0)
-        slider.value = SpotifyService.progressInMs.coerceIn(0, max)
+        slider.value = sliderValue(initialTrack?.positionMs, max)
         slider.addMouseListener(object : java.awt.event.MouseAdapter() {
             override fun mouseReleased(e: java.awt.event.MouseEvent) {
                 val newVal = slider.value
-                SpotifyService.setProgress(newVal)
+                MusicProviderRegistry.active().seek(newVal.toLong())
                 update()
                 slider.value = newVal
             }
@@ -88,29 +96,44 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
         add(titlePanel, BorderLayout.NORTH)
         add(imageLabel, BorderLayout.CENTER)
         add(bottomPanel, BorderLayout.SOUTH)
+
+        // Hide what the active provider cannot do. Spotify supports everything, so its panel is
+        // exactly the one users already know.
+        val capabilities = MusicProviderRegistry.active().capabilities
+        buttonPanel.isVisible = ProviderCapability.CONTROL in capabilities
+        slider.isVisible = ProviderCapability.SEEK in capabilities && ProviderCapability.POSITION in capabilities
+        imageLabel.isVisible = ProviderCapability.ARTWORK in capabilities
     }
 
     fun update() {
-        artistNameLabel.text = SpotifyService.artist.ifEmpty { "Unknown Artist" }
-        songNameLabel.text = SpotifyService.song.ifEmpty { "No track" }
+        val track = MusicProviderRegistry.currentTrack
+        artistNameLabel.text = track?.artist?.ifBlank { null } ?: "Unknown Artist"
+        songNameLabel.text = track?.title?.ifBlank { null } ?: "No track"
         titlePanel.repaint()
 
-        val scaled = loadAndScaleImage(SpotifyService.imageUrl)
+        val scaled = loadAndScaleImage(track?.artworkUrl)
         if (scaled != null) {
             imageIcon.image = scaled
             imageLabel.repaint()
         }
 
-        playPauseButton.icon = if (SpotifyService.isPlaying) spotifyStatusUpdater.pauseIcon else spotifyStatusUpdater.playIcon
+        playPauseButton.icon = if (track?.isPlaying == true) statusUpdater.pauseIcon else statusUpdater.playIcon
 
-        val max = if (SpotifyService.durationMs > 0) SpotifyService.durationMs else 1
+        val max = sliderMaximum(track?.durationMs)
         // Keep slider max in sync with track duration
         if (slider.maximum != max) slider.maximum = max
-        slider.value = SpotifyService.progressInMs.coerceIn(0, max)
+        slider.value = sliderValue(track?.positionMs, max)
     }
 
-    private fun loadAndScaleImage(url: String): Image? {
-        if (url.isBlank()) return createPlaceholderImage()
+    /** JSlider works on `Int`: clamp the (nullable) duration to something usable. */
+    private fun sliderMaximum(durationMs: Long?): Int =
+        (durationMs ?: 0L).coerceAtLeast(1L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
+    private fun sliderValue(positionMs: Long?, max: Int): Int =
+        (positionMs ?: 0L).coerceIn(0L, max.toLong()).toInt()
+
+    private fun loadAndScaleImage(url: String?): Image {
+        if (url.isNullOrBlank()) return createPlaceholderImage()
         return try {
             val image: BufferedImage = ImageIO.read(URL(url)) ?: return createPlaceholderImage()
             image.getScaledInstance(customWidth, customHeight, Image.SCALE_SMOOTH)
@@ -126,7 +149,7 @@ class SpotifyPanel(val spotifyStatusUpdater: SpotifyStatusUpdater) : JPanel(Bord
         g.fillRect(0, 0, customWidth, customHeight)
         g.color = Color(29, 184, 84)
         g.font = g.font.deriveFont(Font.BOLD, 48f)
-        val text = "♪"
+        val text = "\u266a"
         val fm = g.fontMetrics
         val x = (customWidth - fm.stringWidth(text)) / 2
         val y = (customHeight + fm.ascent) / 2 - 10
