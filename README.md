@@ -59,9 +59,14 @@ missing instead of failing.
 
 ## Building from source
 
-A fresh clone builds with **no local, untracked file**: client credentials are no longer hardcoded in a
-gitignored `Secret.kt` (the plugin used to depend on a file that was never in the repository, which made
-the project impossible to compile from a clean checkout).
+A fresh clone builds with **no local, untracked file**: no code references `Secret.kt` any more (the plugin
+used to depend on that file while `.gitignore` kept it out of the repository, which made the project
+impossible to compile from a clean checkout).
+
+`Secret.kt` **stays listed in `.gitignore`** as a safety net: a leftover copy still holding your real
+Spotify credentials must never be commit-able by accident in this public repository. It is not needed any
+more, so delete it, and give the plugin its credentials through the settings or the environment variables
+described below.
 
 Requirements: JDK 17 and the Gradle wrapper shipped here (Gradle 8.14.4).
 
