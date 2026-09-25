@@ -1,30 +1,34 @@
 package com.github.kikimanjaro.intellify.actions
 
-import com.github.kikimanjaro.intellify.services.SpotifyService
+import com.github.kikimanjaro.intellify.provider.MusicProviderRegistry
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 
+/**
+ * Keymap actions. They always talk to the *active* provider (see [MusicProviderRegistry]), never to a
+ * concrete one, so they keep working whatever the platform.
+ */
 class TogglePlayPauseAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
-        if (SpotifyService.isPlaying) SpotifyService.pauseTrack() else SpotifyService.startTrack()
+        MusicProviderRegistry.active().playPause()
     }
 }
 
 class PrevTrackAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
-        SpotifyService.prevTrack()
+        MusicProviderRegistry.active().previous()
     }
 }
 
 class NextTrackAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
-        SpotifyService.nextTrack()
+        MusicProviderRegistry.active().next()
     }
 }
 
-/** Clears stored Spotify credentials and re-triggers OAuth — addresses issue #4 (Change Account). */
+/** Signs out of the active provider (clears its stored credentials) — addresses issue #4 (Change Account). */
 class ChangeAccountAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
-        SpotifyService.changeAccount()
+        MusicProviderRegistry.active().signOut()
     }
 }

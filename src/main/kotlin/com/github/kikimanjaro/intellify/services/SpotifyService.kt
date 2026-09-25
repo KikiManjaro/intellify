@@ -1,6 +1,5 @@
 package com.github.kikimanjaro.intellify.services
 
-import com.github.kikimanjaro.intellify.ui.SpotifyPanel
 import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.Credentials
 import com.intellij.ide.BrowserUtil
@@ -22,8 +21,15 @@ import java.util.concurrent.CompletionException
 import kotlin.concurrent.thread
 
 
+/**
+ * Spotify Web API client: OAuth flow, token store and the Web API calls.
+ *
+ * It is a plain client since the multi-provider refactor: the UI and the actions go through
+ * [com.github.kikimanjaro.intellify.provider.MusicProviderRegistry] and
+ * [com.github.kikimanjaro.intellify.provider.spotify.SpotifyProvider] adapts this class to the
+ * provider SPI. Nothing else should call it directly.
+ */
 object SpotifyService {
-    var currentPanel: SpotifyPanel? = null
     private const val codeServiceName = "Intellify-code"
     private const val accessServiceName = "Intellify-access"
     @Deprecated("Typo alias, kept for migration")
@@ -80,6 +86,7 @@ object SpotifyService {
     var title = ""
     var artist = ""
     var song = ""
+    var album = ""
     var imageUrl = ""
 
     var durationMs = 0
@@ -171,6 +178,7 @@ object SpotifyService {
                     val track = currentlyPlayingContext.item as Track
                     song = track.name
                     artist = track.artists[0].name
+                    album = track.album?.name ?: ""
                     title = track.name
                     title += " - " + track.artists[0].name
                     durationMs = track.durationMs
@@ -384,7 +392,7 @@ object SpotifyService {
         code = ""
         spotifyApi?.accessToken = null
         spotifyApi?.refreshToken = null
-        title = ""; artist = ""; song = ""; imageUrl = ""
+        title = ""; artist = ""; song = ""; album = ""; imageUrl = ""
         durationMs = 0; progressInMs = 0; isPlaying = false
     }
 
