@@ -19,6 +19,12 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 class IntellifySettings : PersistentStateComponent<IntellifySettings.State> {
 
     class State {
+        /**
+         * Id of the active [com.github.kikimanjaro.intellify.provider.MusicProvider].
+         * Empty means "the registry default", i.e. Spotify.
+         */
+        var providerId: String = ""
+
         /** Spotify Web API client id of the Spotify application the user created. */
         var spotifyClientId: String = ""
 

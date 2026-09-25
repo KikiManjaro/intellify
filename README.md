@@ -70,8 +70,8 @@ over the environment):
    export INTELLIFY_SPOTIFY_CLIENT_SECRET=your_client_secret
    ```
 
-2. **Plugin settings file** — `intellify.xml` in the IDE configuration directory (`<config>/options/intellify.xml`),
-   with the `spotifyClientId` / `spotifyClientSecret` entries. A dedicated settings page is on its way.
+2. **Plugin settings** — *Settings > Tools > Intellify*, fields `Spotify client ID` / `Spotify client secret`
+   (stored in `intellify.xml` in the IDE configuration directory).
 
 Never commit these values: they are per-developer credentials, and the plugin reads them at runtime. When
 neither source is set, the plugin stays inactive, displays *Intellify: Spotify is not configured* in the
