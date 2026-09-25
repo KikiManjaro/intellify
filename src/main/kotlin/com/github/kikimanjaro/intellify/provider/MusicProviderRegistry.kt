@@ -1,6 +1,9 @@
 package com.github.kikimanjaro.intellify.provider
 
+import com.github.kikimanjaro.intellify.provider.macos.MacosMediaProvider
+import com.github.kikimanjaro.intellify.provider.playerctl.PlayerctlProvider
 import com.github.kikimanjaro.intellify.provider.spotify.SpotifyProvider
+import com.github.kikimanjaro.intellify.provider.windows.WindowsSmtcProvider
 import com.github.kikimanjaro.intellify.settings.IntellifySettings
 
 /**
@@ -14,7 +17,12 @@ object MusicProviderRegistry {
      * Every provider the plugin ships. The order matters: the first one is the default when the
      * settings hold no (or an unknown) provider id.
      */
-    private val providers: List<MusicProvider> = listOf(SpotifyProvider)
+    private val providers: List<MusicProvider> = listOf(
+        SpotifyProvider,
+        PlayerctlProvider(),
+        WindowsSmtcProvider(),
+        MacosMediaProvider(),
+    )
 
     /**
      * Last snapshot produced by [refresh], read by the status bar widget and the popup panel.

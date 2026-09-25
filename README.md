@@ -19,6 +19,21 @@ Introducing the [Intellify plugin](https://plugins.jetbrains.com/plugin/20623-in
 - **Keymap actions** — `Intellify Toggle Play`, `Intellify Previous Track`, `Intellify Next Track` (bind them in *Settings > Keymap*).
 - **OAuth via Spotify Web API** — automatic token refresh, credentials stored securely via IntelliJ PasswordSafe.
 
+## Providers
+
+Intellify is not Spotify-only: the player displayed and controlled is selected in *Settings > Tools > Intellify*.
+
+| Provider | Platform | How it works | Capabilities |
+|---|---|---|---|
+| **Spotify** (default) | all | Spotify Web API (OAuth) | controls, seek, artwork, position |
+| **playerctl** | Linux | `playerctl` command line (MPRIS) — must be installed and on the `PATH` | controls, position, artwork |
+| **Windows media (SMTC)** | Windows | bundled `nowplaying.ps1` driving the WinRT System Media Transport Controls through Windows PowerShell 5.1 | controls |
+| **macOS media** | macOS | `osascript` driving Spotify.app or Music.app | controls, seek, position |
+
+Nothing else is bundled: the system providers go through `ProcessBuilder`, no extra runtime dependency is
+added, and the controls a provider cannot honour (progress bar, album cover, buttons) are hidden instead of
+being shown but dead.
+
 ## Requirements
 
 - JetBrains IDE 2021.1+ (IC, IU, PyCharm, WebStorm, etc. — any `com.intellij.modules.platform` IDE).
