@@ -37,6 +37,47 @@ Introducing the [Intellify plugin](https://plugins.jetbrains.com/plugin/20623-in
 
 After installing, click the Spotify icon in the bottom status bar to authenticate via your browser (one-time OAuth flow on `http://localhost:30498/callback`).
 
+Intellify talks to the Spotify Web API through *your own* Spotify application, so it needs a client
+ID and a client secret before the first authentication — see [Building from source](#building-from-source)
+below for how to obtain and provide them. Without them the widget stays inactive and tells you what is
+missing instead of failing.
+
+## Building from source
+
+A fresh clone builds with **no local, untracked file**: client credentials are no longer hardcoded in a
+gitignored `Secret.kt` (the plugin used to depend on a file that was never in the repository, which made
+the project impossible to compile from a clean checkout).
+
+Requirements: JDK 17 and the Gradle wrapper shipped here (Gradle 8.14.4).
+
+```bash
+git clone https://github.com/KikiManjaro/intellify.git
+cd intellify
+./gradlew build        # or: ./gradlew test / ./gradlew runIde
+```
+
+### Providing the Spotify client credentials
+
+The plugin needs the client ID and client secret of a Spotify application. Create one at
+<https://developer.spotify.com/dashboard>, add `http://localhost:30498/callback` as a redirect URI, then
+give the values to the plugin by **either** of these means (a value stored in the plugin settings wins
+over the environment):
+
+1. **Environment variables** — start the IDE with:
+
+   ```bash
+   export INTELLIFY_SPOTIFY_CLIENT_ID=your_client_id
+   export INTELLIFY_SPOTIFY_CLIENT_SECRET=your_client_secret
+   ```
+
+2. **Plugin settings file** — `intellify.xml` in the IDE configuration directory (`<config>/options/intellify.xml`),
+   with the `spotifyClientId` / `spotifyClientSecret` entries. A dedicated settings page is on its way.
+
+Never commit these values: they are per-developer credentials, and the plugin reads them at runtime. When
+neither source is set, the plugin stays inactive, displays *Intellify: Spotify is not configured* in the
+status bar and shows a notification explaining what is missing — nothing throws.
+
+
 ## Usage
 
 1. Click the **Intellify** widget in the status bar (bottom bar) to open the popup.

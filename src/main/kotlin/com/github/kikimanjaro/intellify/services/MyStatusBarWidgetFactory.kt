@@ -1,6 +1,9 @@
 package com.github.kikimanjaro.intellify.services
 
 import com.github.kikimanjaro.intellify.ui.SpotifyPanel
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.ListPopup
@@ -24,6 +27,14 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
     private lateinit var intellifyWidget: StatusBarWidget
     private val name = "Intellify"
 
+    /**
+     * The status bar passed to [StatusBarWidget.install]. The presentation returned by
+     * [StatusBarWidget.getPresentation] is a nested anonymous object, so the `statusBar`
+     * parameter of `install()` is not in scope there: it is captured here instead.
+     */
+    @Volatile
+    private var installedStatusBar: StatusBar? = null
+
     override fun getId(): String = name
 
     override fun getDisplayName(): String = name
@@ -41,6 +52,7 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
             override fun ID(): String = name
 
             override fun install(statusBar: StatusBar) {
+                installedStatusBar = statusBar
                 spotifyStatusUpdater = SpotifyStatusUpdater(statusBar)
                 statusUpdaterThread = Thread(spotifyStatusUpdater, "Intellify-SpotifyStatusUpdater").apply {
                     isDaemon = true
@@ -50,11 +62,12 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
 
             override fun getPresentation(): StatusBarWidget.WidgetPresentation {
                 return object : StatusBarWidget.MultipleTextValuesPresentation {
-                    override fun getTooltipText(): String = "Intellify - Click to open Spotify controls"
+                    override fun getTooltipText(): String = SpotifyCredentials.configurationProblem
+                        ?: "Intellify - Click to open Spotify controls"
 
                     override fun getClickConsumer(): Consumer<MouseEvent>? {
                         return Consumer { event ->
-                            showPopup(event, statusBar)
+                            showPopup(event, installedStatusBar)
                         }
                     }
 
@@ -72,6 +85,10 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                     private fun showPopup(event: MouseEvent?, statusBar: StatusBar?) {
                         kotlin.runCatching {
                             val updater = spotifyStatusUpdater ?: return@runCatching
+                            if (!SpotifyService.isConfigured) {
+                                showNotConfiguredNotification()
+                                return@runCatching
+                            }
                             if (SpotifyService.code.isEmpty()) {
                                 SpotifyService.getCodeFromBrowser()
                                 return@runCatching
@@ -120,6 +137,16 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                         }
                     }
 
+                    /** Explains how to configure the Spotify credentials instead of failing silently. */
+                    private fun showNotConfiguredNotification() {
+                        val message = SpotifyService.configurationProblem ?: return
+                        runCatching {
+                            Notifications.Bus.notify(
+                                Notification("Intellify", "Intellify", message, NotificationType.WARNING)
+                            )
+                        }
+                    }
+
                     private fun clampToScreen(point: Point, popupSize: Dimension): Point {
                         val screenBounds = getVisibleScreenBounds(point)
                         val margin = JBUI.scale(4)
@@ -144,10 +171,10 @@ class MyStatusBarWidgetFactory : StatusBarWidgetFactory {
                     }
 
                     override fun getSelectedValue(): String? {
-                        return if (SpotifyService.title.isNotEmpty()) {
-                            " " + SpotifyService.title
-                        } else {
-                            " No song playing"
+                        return when {
+                            !SpotifyService.isConfigured -> " Intellify: Spotify is not configured"
+                            SpotifyService.title.isNotEmpty() -> " " + SpotifyService.title
+                            else -> " No song playing"
                         }
                     }
 

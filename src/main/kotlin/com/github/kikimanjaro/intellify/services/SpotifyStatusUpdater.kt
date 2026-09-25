@@ -22,7 +22,11 @@ class SpotifyStatusUpdater(
     override fun run() {
         while (!stop) {
             try {
-                SpotifyService.getInformationAboutUsersCurrentPlayingTrack()
+                // Polling requires valid Spotify credentials: skip the call (and keep the
+                // inactive icon) while nothing is configured instead of hitting the API.
+                if (SpotifyService.isConfigured) {
+                    SpotifyService.getInformationAboutUsersCurrentPlayingTrack()
+                }
                 updateUI()
                 Thread.sleep(1000L)
             } catch (e: InterruptedException) {
