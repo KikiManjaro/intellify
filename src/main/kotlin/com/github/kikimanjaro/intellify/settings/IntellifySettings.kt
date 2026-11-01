@@ -25,6 +25,12 @@ class IntellifySettings : PersistentStateComponent<IntellifySettings.State> {
          */
         var providerId: String = ""
 
+        /**
+         * Name of the player the `playerctl` provider should control. Empty means "the first player
+         * reported by `playerctl --list-all`".
+         */
+        var playerctlPlayer: String = ""
+
         /** Spotify Web API client id of the Spotify application the user created. */
         var spotifyClientId: String = ""
 
